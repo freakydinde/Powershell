@@ -30,11 +30,9 @@ Send-BuildInfos -LogLevel "Debug"
 Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French","Spanish")][string]$Language="English",
   		[Parameter(Mandatory=$false,Position=1)][Validateset("Host","Verbose","Debug","Trace")][string]$LogLevel="Verbose" )
 
-# import Input\Output module, containing Log functions, HTML functions, and global folders
-Import-Module ([IO.Path]::Combine($PSScriptRoot, "Modules", "Module-IO.psm1"))
-
-# import Tfs Module, containing all tfs operations functions
-Import-Module ([IO.Path]::Combine($gobal:ModulesFolder, "Module-Tfs.psm1"))
+# import IO and TFS modules
+$modulesShortName = @("IO", "Tfs")
+$modulesShortName | if (!(Get-Module -Name "Module-$($_)")) { Import-Module ([IO.Path]::Combine($global:ModulesFolder, "Module-$($_).psm1")) -Force -Global }
 
 # define verbose log level and log colors (functions from Module-IO)
 Set-LogColor
