@@ -1009,6 +1009,75 @@ Function Write-ObjectToXml
 
 <#
 .Synopsis
+return xml data
+
+.Description
+test-path, then read and return xml file as object
+
+.Parameter File
+file name without extension
+
+.Parameter Folder
+file folder, not mandatory, default = Data folder
+
+.Parameter IsFullPath
+-switch set to true if $File contain file full path
+
+.Example
+Get-Data "Builds"
+#>
+Function Get-Data
+{
+    [CmdletBinding()]
+    Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
+			[Parameter(Mandatory=$false,Position=1)][string]$Folder=$global:DataFolder,
+			[Parameter(Mandatory=$false,Position=2)][switch]$IsFullPath )
+
+    Write-LogDebug "Start Get-Data"
+
+    try
+    {
+        Write-LogVerbose "reading $File data file"
+
+        if ($IsFullPath)
+        {
+            $filePath = $File
+        }
+        else
+        {
+            $filePath = [IO.Path]::Combine($Folder, "$File.xml")
+        }
+
+		try
+		{
+			$returnObject = [xml](Get-Content $filePath -Encoding UTF8)
+		}
+		catch [System.Management.Automation.ItemNotFoundException]
+		{
+			if ($File -eq "History") 
+			{ New-HistoryXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
+			elseif ($File -eq "Events") 
+			{ New-EventsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
+			elseif ($File -eq "Versions") 
+			{ New-VersionsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
+			else 
+			{ Write-LogError $($_.Exception) $($_.InvocationInfo) }
+		}
+
+        return $returnObject
+
+	    # trace Success
+	    Write-LogDebug "Success Get-Data"
+    }
+    catch
+    {
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+}
+
+<#
+.Synopsis
 Get Xml element or attribute value
 
 .Description
@@ -1760,178 +1829,6 @@ Function Set-SecureString
 
 	    # trace Success
 	    Write-LogDebug "Success Set-SecureString"
-    }
-    catch
-    {
-        # log Error
-        Write-LogError $($_.Exception) $($_.InvocationInfo)
-    }
-}
-
-#endregion
-
-#region psKitUtilities
-
-<#
-.Synopsis
-import modules with an easy syntax
-
-.Description
-Import modules by module short names array, exemple : Root\Modules\Module-Exemple.psm1 and Root\Modules\Module-Exemple2.psm1 can be imported with syntax : Add-Modules "Exemple","Exemple2"
-
-.Parameter Names
-Short names list of the modules to import (not mandatory, default = all modules in Root\Modules folder)
-
-.Parameter Assert
-switch : select if wan't to test module availabily before import
-
-.Example
-Add-Modules "Infra", "Install"
-#>
-Function Add-Modules
-{
-    [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$false,Position=0)][array]$Names,
-			[Parameter(Mandatory=$false,Position=1)][switch]$Assert )
-
-    Write-LogDebug "Start Add-Modules"
-
-    try
-    {
-        if ($Names)
-        {
-            foreach ($name in $Names)
-            {
-				if (!$Assert -or !(Get-Module -Name "Module-$name"))
-				{
-					$modulePath = [IO.Path]::Combine($global:ModulesFolder, "Module-$name.psm1")
-					Import-Module $modulePath -Force -Global
-				}
-            }
-        }
-        else
-        {
-			if ($Assert)
-			{
-				Get-ChildItem ($global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Import-Module -Name $_.FullName -Force -Global }
-			}
-			else
-			{
-				Get-ChildItem ($global:ModulesFolder) | % { Import-Module -Name $_.FullName -Force -Global }
-			}
-        }
-
-	    # trace Success
-	    Write-LogDebug "Success Add-Modules"
-    }
-    catch
-    {
-        # log Error
-        Write-LogError $($_.Exception) $($_.InvocationInfo)
-    }
-}
-
-<#
-.Synopsis
-import assemblies with an easy syntax
-
-.Description
-Import assemblies by assembly short name array, exemple : Root\Assemblies\Microsoft.ServiceBus.dll and Root\Modules\Microsoft.WindowsAzure.Configuration.dll can be imported with syntax : Add-Modules "ServiceBus","WindowsAzure.Configuration"
-
-.Parameter Names
-Short names list of the assemblies to import
-
-.Example
-Add-Assemblies "SqlServer.SqlEnum", "SqlServer.Smo"
-#>
-Function Add-Assemblies
-{
-    [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][array]$Names )
-
-    Write-LogDebug "Start Add-Assemblies"
-
-    try
-    {
-        foreach ($name in $Names)
-        {
-            $assemblyName = "Microsoft.$name.dll"
-            $assemblyPath = [IO.Path]::Combine($global:AssembliesFolder, $assemblyName)
-
-            Add-Type -Path $assemblyPath
-        }
-
-	    # trace Success
-	    Write-LogDebug "Success Add-Assemblies"
-    }
-    catch
-    {
-        # log Error
-        Write-LogError $($_.Exception) $($_.InvocationInfo)
-    }
-}
-
-<#
-.Synopsis
-return xml data
-
-.Description
-test-path, then read and return xml file as object
-
-.Parameter File
-file name without extension
-
-.Parameter Folder
-file folder, not mandatory, default = Data folder
-
-.Parameter IsFullPath
--switch set to true if $File contain file full path
-
-.Example
-Get-Data "Builds"
-#>
-Function Get-Data
-{
-    [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
-			[Parameter(Mandatory=$false,Position=1)][string]$Folder=$global:DataFolder,
-			[Parameter(Mandatory=$false,Position=2)][switch]$IsFullPath )
-
-    Write-LogDebug "Start Get-Data"
-
-    try
-    {
-        Write-LogVerbose "reading $File data file"
-
-        if ($IsFullPath)
-        {
-            $filePath = $File
-        }
-        else
-        {
-            $filePath = [IO.Path]::Combine($Folder, "$File.xml")
-        }
-
-		try
-		{
-			$returnObject = [xml](Get-Content $filePath -Encoding UTF8)
-		}
-		catch [System.Management.Automation.ItemNotFoundException]
-		{
-			if ($File -eq "History") 
-			{ New-HistoryXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			elseif ($File -eq "Events") 
-			{ New-EventsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			elseif ($File -eq "Versions") 
-			{ New-VersionsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			else 
-			{ Write-LogError $($_.Exception) $($_.InvocationInfo) }
-		}
-
-        return $returnObject
-
-	    # trace Success
-	    Write-LogDebug "Success Get-Data"
     }
     catch
     {

@@ -16,8 +16,9 @@ contain method that perform operation on tfs projects collection
 # import Input\Output module
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
-# dll imports
-Add-Assemblies @("TeamFoundation.Client","TeamFoundation.Build.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","VisualStudio.Services.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","TeamFoundation.Build.Common")
+# import TFS assemblies ($global:AssembliesFolder is set on Module-IO.psm1 import)
+$assembliesShortName = @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
+$assembliesShortName | Add-Type -Path $([IO.Path]::Combine($global:AssembliesFolder, "Microsoft.$($_).dll")) 
 
 #endregion
 
