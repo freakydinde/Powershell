@@ -3,7 +3,7 @@
 Input & Output helper
 
 .Description
-contain IO fonctionnality : log, xml, IO, pskit..
+contain IO fonctionnality : log, xml, IO..
 
 .Notes
 	fileName	: Module-IO.psm1
@@ -1015,13 +1015,13 @@ return xml data
 test-path, then read and return xml file as object
 
 .Parameter File
-file name without extension
+file name without extension, or file full path if you use switch -IsFullPath
 
 .Parameter Folder
 file folder, not mandatory, default = Data folder
 
 .Parameter IsFullPath
--switch set to true if $File contain file full path
+-switch set to true if $File is a file full path
 
 .Example
 Get-Data "Builds"
@@ -1048,21 +1048,7 @@ Function Get-Data
             $filePath = [IO.Path]::Combine($Folder, "$File.xml")
         }
 
-		try
-		{
-			$returnObject = [xml](Get-Content $filePath -Encoding UTF8)
-		}
-		catch [System.Management.Automation.ItemNotFoundException]
-		{
-			if ($File -eq "History") 
-			{ New-HistoryXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			elseif ($File -eq "Events") 
-			{ New-EventsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			elseif ($File -eq "Versions") 
-			{ New-VersionsXml | Out-Null; $returnObject = [xml](Get-Content $filePath) }
-			else 
-			{ Write-LogError $($_.Exception) $($_.InvocationInfo) }
-		}
+		$returnObject = [xml](Get-Content $filePath -Encoding UTF8)
 
         return $returnObject
 
