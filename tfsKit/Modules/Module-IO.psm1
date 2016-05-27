@@ -1398,9 +1398,9 @@ Function Add-Modules
     Param
     (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
 		[Parameter(Mandatory=$false,Position=1)][switch]$Assert )
- 
-    Write-LogDebug "Start Add-Modules"
- 
+	
+	Write-LogDebug "Start Add-Modules"
+
     try
     {
         if ($ShortNames)
