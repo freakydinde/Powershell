@@ -3,17 +3,17 @@
 Input & Output helper
 
 .Description
-contain IO fonctionnality : log, xml, IO..
+contain IO fonctionnality : log, xml, IO.
 
 .Notes
 	fileName	: Module-IO.psm1
-	version		: 0.31
+	version		: 0.52
 	author		: Armand Lacore
 #>
 
 #region PARAMETERS
 
-# define root folder, this module is meant to be hosted in Modules folder child of Root, Root\Modules\Module-IO.psm1
+# define root folder, this module is meant to be hosted in Root\Modules
 if (!$global:RootFolder) { $global:RootFolder = (Split-Path $PSScriptRoot) }
 
 # define kit folders : Assemblies (.dll), Data (.xml), Modules (.psm1), Logs (.log)
@@ -29,8 +29,8 @@ if (!(Test-Path $global:LogsFolder)) { New-Item $global:LogsFolder -ItemType Dir
 if (!$global:LogFile) { $global:LogFile = [IO.Path]::Combine($global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
 
 # variables used to get Write-LogError trace history
-$global:TraceBuffer = [String]::Empty
-$global:ErrorId = [String]::Empty
+$global:TraceBuffer = [string]::Empty
+$global:ErrorId = [string]::Empty
 
 # Write-ObjectToHtml use HtmlEncode static method from System.Web.HttpUtility class
 Add-Type -Assembly System.Web
@@ -41,34 +41,34 @@ Add-Type -Assembly System.Web
 
 <#
 .Synopsis
-add text to each line of a given text
+Add text to each line of a given text
 
 .Description
-split text into array with separator `n, then add text to each line
+Split text into array with separator `n, then add text before and/or after each line
 
 .Parameter Text
-original text to append
+Original text to append
 
 .Parameter LineBegin
-text to add to the begining of each line
+Text to add to the begining of each line
 
 .Parameter LineEnd
-text to add to the end of each line
+Text to add to the end of each line
 
 .Example
 Add-ToEachLine $text "`t`t"
 
 .Outputs
-$Message
+Original text appended with extra text
 #>
 Function Add-ToEachLine
 {
 	Param ( [Parameter(Mandatory=$true,Position=0)][AllowEmptyString()][string]$Text,
-			[Parameter(Mandatory=$false,Position=1)][string]$LineBegin=[String]::Empty,
-			[Parameter(Mandatory=$false,Position=2)][string]$LineEnd=[String]::Empty )
+			[Parameter(Mandatory=$false,Position=1)][string]$LineBegin=[string]::Empty,
+			[Parameter(Mandatory=$false,Position=2)][string]$LineEnd=[string]::Empty )
 
 	#initialize return value
-	$returnText = [String]::Empty
+	$returnText = [string]::Empty
 	
 	try
 	{
@@ -85,34 +85,34 @@ Function Add-ToEachLine
 
 <#
 .Synopsis
-format message
+Format message
 
 .Description
-format message before they are logged
+Format message before they are logged, adding Title and/or extra blank line
 
 .Parameter Message
 Content of the message to trace
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineBefore
-insert blank line before text
+Insert blank line before text
 
 .Parameter LineAfter
-insert blank line after text
+Insert blank line after text
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
-Format-Message "bonjour"
+Format-Message "hello"
 
 .Example
-Format-Message "bonjour" "titre" -LineBefore
+Format-Message "hello" "title" -LineBefore
 
 .Outputs
-$Message
+Original text formatted
 #>
 Function Format-Message
 {
@@ -123,7 +123,7 @@ Function Format-Message
 			[Parameter(Mandatory=$false,Position=4)][switch]$LineAfterTitle )
 
 	#initialize return value
-	$toWrite = [String]::Empty
+	$toWrite = [string]::Empty
 	
 	try
 	{
@@ -160,10 +160,10 @@ Function Format-Message
 
 <#
 .Synopsis
-enlarge UI
+Set powershell UI size
  
 .Description
-enlarge UI to get better console message formating
+Set powershell UI size and buffer to get better console message display
 
 .Parameter Width
 UI Width in pixel
@@ -173,6 +173,9 @@ UI Height in pixel
 
 .Example
 Set-UISize
+
+.Example
+Set-UISize 200 70
 #>
 Function Set-UISize
 {
@@ -200,25 +203,25 @@ Function Set-UISize
 
 <#
 .Synopsis
-define host color
+Define host color
 
 .Description
-set fore and background color for all messages type
+Set fore and background color for all messages type
 
 .Parameter ErrorColor
-foreground color of error log event
+Foreground color of error log message
 
 .Parameter WarningColor
-foreground color of warning log event
+Foreground color of warning log message
 
 .Parameter DebugColor
-foreground color of debug log event
+Foreground color of debug log message
 
 .Parameter VerboseColor
-foreground color of verbose log event
+Foreground color of verbose log message
 
 .Parameter ProgressColor
-foreground color of progress event
+Foreground color of progress message
 
 .Example
 Set-LogColor
@@ -261,16 +264,16 @@ Function Set-LogColor
 
 <#
 .Synopsis
-define log level
+Define log level
 
 .Description
-set error, warning, verbose, debug and trace preference to define log level
+Set error, warning, verbose, debug and trace preference to define log level
 
-.Parameter $Level
-Host, Error, Debug, Trace
+.Parameter Level
+Log level from : Host, Error, Debug, Trace
 
 .Example
-Set-LogLevel "Host"
+Set-LogLevel "Verbose"
 #>
 Function Set-LogLevel
 {
@@ -326,31 +329,31 @@ Function Set-LogLevel
 
 <#
 .Synopsis
-trace Debug
+Trace debug message
 
 .Description
-send trace to host as Debug stream and add content to logfile
+Send trace to host as Debug message and add content to logfile
 
 .Parameter Message
 Content of the message to trace
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineBefore
-insert blank line before text
+Insert blank line before text
 
 .Parameter LineAfter
-insert blank line after text
+Insert blank line after text
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
-Write-LogDebug -Message "bonjour"
+Write-LogDebug "bonjour"
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogDebug
 {
@@ -379,10 +382,10 @@ Function Write-LogDebug
 
 <#
 .Synopsis
-log Error
+log error message
 
 .Description
-send log to host as Error stream and add content to logfile
+Send log to host as Error message and add content to logfile
 
 .Parameter Exception
 Exception object, used to get error message
@@ -391,16 +394,16 @@ Exception object, used to get error message
 Invocation object info, use to get script name and line
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
 Write-LogError $($_.Exception) $($_.InvocationInfo)
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogError
 {
@@ -449,28 +452,28 @@ Function Write-LogError
 
 <#
 .Synopsis
-trace event
+Trace event message
 
 .Description
-send log message to windows events log
+Send log message to windows events log
 
 .Parameter Message
 Content of the message to log
 
 .Parameter Type
-message type as string : Information, Error, Warning, SuccessAudit, FailureAudit
+Message type as string : Information, Error, Warning, SuccessAudit, FailureAudit
 
 .Parameter Source
 Event source (will be created if not exist)
 
 .Parameter LogName
-destination log : Application, Security, Setup, System
+Destination log : Application, Security, Setup, System, custom log name..
 
 .Parameter EventID
-id of the event
+ID of the event
 
 .Parameter Computer
-destination computer
+Destination computer
 
 .Example
 Write-LogEvent "bonjour"
@@ -479,14 +482,14 @@ Write-LogEvent "bonjour"
 Write-LogEvent "bonjour" "Warning" "Batch"
 
 .Outputs
-$Message
+Append message to event log
 #>
 Function Write-LogEvent
 {
 	[CmdletBinding()]
 	Param ( [Parameter(Mandatory=$true,Position=0)][string]$Message,
 			[Parameter(Mandatory=$false,Position=1)][string]$Type="Information",
-			[Parameter(Mandatory=$false,Position=2)][string]$Source="myPSKit",
+			[Parameter(Mandatory=$false,Position=2)][string]$Source="tfsKit",
 			[Parameter(Mandatory=$false,Position=3)][string]$LogName="IO",
 			[Parameter(Mandatory=$false,Position=5)][int]$EventID=0,
 			[Parameter(Mandatory=$false,Position=4)][string]$ComputerName="localhost" )
@@ -511,7 +514,7 @@ Function Write-LogEvent
 			New-EventLog -LogName $LogName -Source $Source -ComputerName $ComputerName
 		}
 
-		Write-LogEventLog -LogName $LogName -Source $Source -ComputerName $ComputerName -EventId $EventID -Message $Message -EntryType $Type
+		Write-EventLog -LogName $LogName -Source $Source -ComputerName $ComputerName -EventId $EventID -Message $Message -EntryType $Type
 	}
 	catch
 	{
@@ -522,31 +525,31 @@ Function Write-LogEvent
 
 <#
 .Synopsis
-trace Host message
+Trace Host message
 
 .Description
-send trace to host as Host stream and add content to logfile
+Send trace to host as Host message and add content to logfile
 
 .Parameter Message
 Content of the message to trace
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineBefore
-insert blank line before text
+Insert blank line before text
 
 .Parameter LineAfter
-insert blank line after text
+Insert blank line after text
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
-Write-LogHost -Message "bonjour"
+Write-LogHost "bonjour"
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogHost
 {
@@ -572,40 +575,40 @@ Function Write-LogHost
 
 <#
 .Synopsis
-ObjectFormat object report
+Log Object after formating display
 
 .Description
-use Object Format-List, Trim() and $([Environment]::NewLine) to get a proper object report
+Format Object into a proper readable format
 
 .Parameter Object
-object to log
+Object to log
 
-.Parameter Message
-title message for the object
+.Parameter Title
+Add a title to the object report
 
 .Parameter Level
-log level output
+Set log level for message output ("Host","Verbose","Warning","Debug","Error")
 
 .Parameter Format
-object output formatting
+Object output formatting ("List","Table","Wide")
 
 .Parameter SkipLineBefore
-do not insert blank line before object
+Do not Insert blank line before object
 
 .Parameter SkipLineAfter
-do not insert blank line after object
+Do not Insert blank line after object
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
 Write-LogObject $object
 
 .Example
-Write-LogObject -Object $object -Format "Table"
+Write-LogObject $object -Format "Table"
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogObject
 {
@@ -657,31 +660,31 @@ Function Write-LogObject
 
 <#
 .Synopsis
-trace Verbose
+Trace Verbose message
 
 .Description
-send trace to host as Verbose stream and add content to logfile
+Send trace to host as Verbose message and add content to logfile
 
 .Parameter Message
 Content of the message to trace
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineBefore
-insert blank line before text
+Insert blank line before text
 
 .Parameter LineAfter
-insert blank line after text
+Insert blank line after text
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
-Write-LogVerbose -Message "bonjour"
+Write-LogVerbose "bonjour"
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogVerbose
 {
@@ -710,31 +713,31 @@ Function Write-LogVerbose
 
 <#
 .Synopsis
-log Warning
+Log Warning message
 
 .Description
-send log to host as Warning stream and add content to logfile
+Send log to host as Warning message and add content to logfile
 
 .Parameter Message
 Content of the message to trace
 
 .Parameter Title
-Title to insert befor content message
+Title to insert before content message
 
 .Parameter LineBefore
-insert blank line before text
+Insert blank line before text
 
 .Parameter LineAfter
-insert blank line after text
+Insert blank line after text
 
 .Parameter LineAfterTitle
-insert blank line between title and message content
+Insert blank line between title and message content
 
 .Example
-Write-LogWarning -Message "bonjour"
+Write-LogWarning "bonjour"
 
 .Outputs
-$Message
+Print message to console, append message to log file
 #>
 Function Write-LogWarning
 {
@@ -763,37 +766,37 @@ Function Write-LogWarning
 
 <#
 .Synopsis
-Write a Objects array to html table
+Write a Object array or Hashtable/OrderedDictionary collection to html table
 
 .Description
-Write a one level Objects array into html table
+Write a one level object array or Hashtable/OrderedDictionary collection into html table
 
 .Parameter Object
-array containing Objects to report
+One level object array or Hashtable/OrderedDictionary collection to report
 
 .Parameter TableClass
-if set, define the table class
+If set, define the table class
 
 .Parameter ThClass
-if set, define the table header class
+If set, define the table header class
 
 .Parameter TrClass
-if set, define the table row class
+If set, define the table row class
 
 .Parameter TdClass
-if set, define the table data class
+If set, define the table data class
 
 .Parameter Horizontal
-switch, set to true if you want to print html table horizontaly
+Switch, set to true if you want to print html table horizontaly
 
 .Parameter SkipTh
-switch, set to true if you don't want to print table header
+Switch, set to true if you don't want to print table header
 
 .Example
 Write-ObjectToHtml $object -FirstLineAsTh -ThClass "bigTitle"
 
 .Outputs
-table on success / null on fail
+object formated as HTML table on success / null on fail
 #>
 Function Write-ObjectToHtml
 {
@@ -817,13 +820,13 @@ Function Write-ObjectToHtml
         if ($Object)
         {
             # initialize return value
-		    $htmlTable = [String]::Empty
+		    $htmlTable = [string]::Empty
         
-            if ($TableClass) { $TableClass = " class=`"$TableClass`"" } else { $TableClass = [String]::Empty }
-            if ($ThClass) { $ThClass = " class=`"$ThClass`"" } else { $ThClass = [String]::Empty }
-            if ($TrClass) { $TrClass = " class=`"$TrClass`"" } else { $TrClass = [String]::Empty }
-            if ($TdClass) { $TdClass = " class=`"$TdClass`"" } else { $TdClass = [String]::Empty }
-            if ($TableId) { $TableId = " Id=`"$TableId`"" } else { $TableId = [String]::Empty }
+            if ($TableClass) { $TableClass = " class=`"$TableClass`"" } else { $TableClass = [string]::Empty }
+            if ($ThClass) { $ThClass = " class=`"$ThClass`"" } else { $ThClass = [string]::Empty }
+            if ($TrClass) { $TrClass = " class=`"$TrClass`"" } else { $TrClass = [string]::Empty }
+            if ($TdClass) { $TdClass = " class=`"$TdClass`"" } else { $TdClass = [string]::Empty }
+            if ($TableId) { $TableId = " Id=`"$TableId`"" } else { $TableId = [string]::Empty }
 
 		    if ($Object -is [array])
 		    {
@@ -906,7 +909,7 @@ Function Write-ObjectToHtml
         else
         {
             Write-LogWarning "Object is null"
-            $htmlTable = [String]::Empty
+            $htmlTable = [string]::Empty
         }
 
 		# trace Success
@@ -923,28 +926,28 @@ Function Write-ObjectToHtml
 
 <#
 .Synopsis
-Write a psObject to xml elements
+Write a objects array or Hashtable/OrderedDictionary collection to xml file
 
 .Description
-Write a one level psObject into xml elements
+Write a objects array or Hashtable/OrderedDictionary collection array into xml file
 
 .Parameter Object
-psObject to report
+One level object array or Hashtable/OrderedDictionary collection to report
 
 .Parameter Path
-xml output path
+Xml file output path
 
 .Parameter RootName
-xml root name
+Xml root element name
 
 .Parameter ElementName
-xml element name 
+Xml elements name 
 
 .Example
-Write-ObjectToXml -Object $psObject -Path "C:\output.xml"
+Write-ObjectToXml $array "C:\output.xml"
 
 .Outputs
-true on success / false on fail
+object formated as XML saved to file on success / null on fail
 #>
 Function Write-ObjectToXml
 {
@@ -957,8 +960,13 @@ Function Write-ObjectToXml
 	
 	try
 	{
+		# dirty temp todo OBSELETE CODE
+		# dirty temp todo OBSELETE CODE
+		# dirty temp todo OBSELETE CODE
+
 		Write-LogVerbose "Saving custom PSObject to XML file $($Path)"
 
+		# dirty temp todo OBSELETE CODE
 		$folder = (Split-Path $Path)
 
 		if (!(Test-Path $folder))
@@ -1009,22 +1017,22 @@ Function Write-ObjectToXml
 
 <#
 .Synopsis
-return xml data
+Return xml data from file
 
 .Description
-test-path, then read and return xml file as object
+Iterate short names array then test-path, complete short name, set path, read and return xml file as object
 
 .Parameter File
-file name without extension, or file full path if you use switch -IsFullPath
+File name without extension, or file full path if you use switch -IsFullPath
 
 .Parameter Folder
-file folder, not mandatory, default = Data folder
+File folder if file is not hosted in Root\Data folder (not mandatory)
 
 .Parameter IsFullPath
--switch set to true if $File is a file full path
+Switch set to true if $File is a file full path
 
 .Example
-Get-Data "Builds"
+Get-Data "CodeAnalysis"
 #>
 Function Get-Data
 {
@@ -1067,10 +1075,10 @@ Function Get-Data
 Get Xml element or attribute value
 
 .Description
-Get an xml element or attribute identified by XPath
+Get value from an xml element or attribute identified by XPath
 
 .Parameter File
-full path to the file edited
+Full path to the file edited
 
 .Parameter XPath
 Xpath to property to get
@@ -1079,7 +1087,7 @@ Xpath to property to get
 Get-XPathValue "C:\example.xml" "/system.web/authentication/@mode"
 
 .Outputs
-value on success / null on fail
+Element value on success / null on fail
 #>
 Function Get-XPathValue
 {
@@ -1146,7 +1154,7 @@ Value to set
 Edition type : setValue, add, remove, replace, comment, unComment
 
 .Parameter addMode
-insertion mode : before \ after Xpath given
+Insertion mode : before \ after Xpath given
 
 .Example
 Set-XPathValue "C:\example.xml" "/system.web/authentication/@mode" "true"
@@ -1155,7 +1163,7 @@ Set-XPathValue "C:\example.xml" "/system.web/authentication/@mode" "true"
 Set-XPathValue "C:\example.xml" "/system.web/authentication/@mode" -Type "comment"
 
 .Outputs
-true on success / false on fail
+True on success / False on fail
 #>
 Function Set-XPathValue
 {
@@ -1528,7 +1536,7 @@ Function Get-InString
 	Write-LogDebug "Start Get-InString"
 
 	# initialize return value
-	$returnValue = [String]::Empty
+	$returnValue = [string]::Empty
 
 	try
 	{

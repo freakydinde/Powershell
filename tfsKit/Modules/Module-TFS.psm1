@@ -1,22 +1,22 @@
 <# 
 .Synopsis
-team foundation server Functionnality
+functionnality to query team foundation servers builds
 
 .Description
-contain method that perform operation on tfs projects collection
+contain method that perform operation on TFS projects collection, get builds data, compilation, code analysis & test results.
 
 .Notes 
 	fileName	: Module-TFS.psm1
-	version		: 0.013
+	version		: 0.032
 	author		: Armand Lacore
 #>
 
 #region <MODULE PARAMETERS>
 
-# import Input\Output module
+# import Input\Output module : logging methods, $global variables, IO helpers (IO module is meant be stored on the same folder than this module : Root\Modules)
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
-# import TFS assemblies ($global:AssembliesFolder is set on Module-IO.psm1 import)
+# import TFS assemblies ($global:AssembliesFolder come from Module-IO and represent Root\Assemblies folder)
 $assembliesShortName = @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
 $assembliesShortName | % { Add-Type -Path ([IO.Path]::Combine($global:AssembliesFolder, "Microsoft.$_.dll")) }
 
@@ -26,34 +26,34 @@ $assembliesShortName | % { Add-Type -Path ([IO.Path]::Combine($global:Assemblies
 
 <# 
 .Synopsis
-Return TFS builds informations
+get TFS builds informations
 
 .Description
-Get build details from build number, optionally add full detailled informations
+get build full details from projets collection URI, project name and build number
 
 .Parameter TfsCollectionUri
-Tfs Team project Uri
+TFS team projects collection Uri
 
 .Parameter TfsProjectName
-Project Name from TFS collection
+TFS project name as string
 
 .Parameter TfsBuildNumber
-build number, including buildName_buildDate
+TFS build number as string, format : buildName_buildDate_iteration
 
 .Parameter Language
-Language used in code analysis error descriptions (only used in FullDetails mode)
+Language used in code analysis items descriptions (only used in FullDetails mode)
 
 .Parameter Details
-switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
+Switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
 
 .Parameter FullDetails
-switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results and full detailled informations array
+Switch, set to true if you wan't to compile info from build errors, build warnings, UnitTest and code coverage results into a full detailled readable array
 
 .Example
-Get-TfsBuildDetails "https://tfs.axacolor.igo6.com/tfs/DefaultCollection" "CI-IGO6-Main" "CI-IGO6-Main_20160306.1" -FullDetails
+Get-TfsBuildDetails "https://tfs.myProjectsColUri.com/DefaultCollection" "CI-myProject-Main" "CI-myProject-Main_20160306.1" -FullDetails
 
 .Outputs
-Tfs build details on success / null on fail
+PSObject containing TFS build details on success / null object on fail
 #> 
 Function Get-TfsBuildDetails
 {
@@ -78,7 +78,7 @@ Function Get-TfsBuildDetails
 		if ($tfsBuilds)
 		{
 			$tfsBuild = $tfsBuilds.Builds | Select-Object -First 1
-			$tfsBuild | Add-Member -NotePropertyName Tfs -NotePropertyValue $($tfsBuilds.Tfs)
+			$tfsBuild | Add-Member -NotePropertyName TFS -NotePropertyValue $($tfsBuilds.Tfs)
 
 			if ($Details -or $FullDetails)
 			{
@@ -178,22 +178,22 @@ Function Get-TfsBuildDetails
 Return TFS builds informations
 
 .Description
-Use build details specification properties to filter type of data returned,see https://msdn.microsoft.com/en-us/library/microsoft.teamfoundation.build.server.builddetailspec_properties(v=vs.120).aspx
+Use build details specification properties to filter type of data returned, see https://msdn.microsoft.com/en-us/library/microsoft.teamfoundation.build.server.builddetailspec_properties(v=vs.120).aspx
 
 .Parameter TfsCollectionUri
-Tfs Team project Uri
+TFS team projects collection Uri
 
 .Parameter TfsProjectName
-Project Name from TFS collection
+TFS project name as string
 
 .Parameter TfsBuildName
-Name of the builds to return
+TFS build name
 
 .Parameter TfsBuildNumber
-build number filter, wildcards are allowed, default = "*"
+build number filter, wildcards are allowed, default = "*", buildnumber format : buildName_buildDate_iteration
 
 .Parameter InformationTypes
-information types to return, * indicates all informations, default = $null
+information types to return, * indicates all informations, default = $null (get only elementary build infos)
 
 .Parameter MinFinishTime
 minimum finish time filter, default = 0 (01/01/0001 00:00:00)
@@ -211,10 +211,10 @@ desired order of the builds returned, default = StartTimeAscending, available : 
 build status filter, default = All, available : None, InProgress, Succeeded, PartiallySucceeded, Failed, Stopped, NotStarted, All
 
 .Example
-Get-TfsBuilds "https://tfs.axacolor.igo6.com/tfs/DefaultCollection" "COLOR-SP" "CI-IGO6-Main"
+Get-TfsBuilds "https://tfs.myProjectsColUri.com/DefaultCollection" "myProj" "CI-myProject-Main"
 
 .Outputs
-Tfs builds on success / null on fail
+PSObject containing TFS builds on success / null object on fail
 #> 
 Function Get-TfsBuilds 
 {
@@ -234,7 +234,7 @@ Function Get-TfsBuilds
 
     try
     {
-        $tfs = Get-TfsConnection $TfsCollectionUri
+        $TFS = Get-TfsConnection $TfsCollectionUri
 
 	    if ($tfs.HasAuthenticated)
 	    {
@@ -256,7 +256,7 @@ Function Get-TfsBuilds
 			
 			if ($tfsBuilds)
 			{
-				$tfsBuilds | Add-Member -NotePropertyName Tfs -NotePropertyValue $tfs
+				$tfsBuilds | Add-Member -NotePropertyName TFS -NotePropertyValue $tfs
 			}
 			else
 			{
@@ -284,22 +284,22 @@ Function Get-TfsBuilds
 
 <# 
 .Synopsis
-Return code analysis details from tfs builds
+Return code analysis details from TFS builds
 
 .Description
-return an array containing code analysis errors and warning occurency by ids
+return an array containing code analysis errors and warning ids, description and occurency
 
 .Parameter TfsBuild
-full build containing all build data
+TFS build containing detailled build data
 
 .Parameter Language
-Language used in code analysis error descriptions
+Language used in code analysis items descriptions
 
 .Example
 Get-TfsCodeAnalysisInfo $tfsBuild
 
 .Outputs
-code analysis details on success / null on fail
+Ordered dictionnary collection containing code analysis details on success / null object on fail
 #> 
 Function Get-TfsCodeAnalysisInfo
 {
@@ -313,11 +313,8 @@ Function Get-TfsCodeAnalysisInfo
     {
         Write-LogHost "getting code analysis info from $($TfsBuild.BuildNumber)"
 
-        # Load configuration
-        $buildInfoParameters = Get-Data "BuildInfos"
-
         # get code analysis rules code mapping containing translation
-        $codeAnalysisRules = $buildInfoParameters.BuildReports.CodeAnalysisRules.CodeAnalysisRule
+        $codeAnalysisRules = (Get-Data "CodeAnalysis").CodeAnalysisRules.CodeAnalysisRule
 
 		# initialize returned object
 		$codeAnalysisInfo = New-Object -TypeName PsObject
@@ -360,19 +357,19 @@ Function Get-TfsCodeAnalysisInfo
 
 <# 
 .Synopsis
-Return code coverage details from tfs builds
+return code coverage details from TFS builds
 
 .Description
-return an array containing code coverage errors and warning occurency by ids
+return an array containing code coverage details in a readable format
 
 .Parameter TfsBuild
-full build containing all build data
+TFS build containing detailled build data
 
 .Example
 Get-TfsCodeCoveragesInfo $tfsBuild
 
 .Outputs
-code coverage details on success / null on fail
+Ordered dictionnary collection containing code coverage details on success / null object on fail
 #> 
 Function Get-TfsCodeCoveragesInfo
 {
@@ -444,19 +441,19 @@ Function Get-TfsCodeCoveragesInfo
 
 <# 
 .Synopsis
-Return build messages details from tfs builds
+Return build messages details from TFS builds
 
 .Description
-return an array containing build messages details
+return an array containing build compilation warning and errors messages details in a readable format
 
 .Parameter TfsBuild
-full build containing all build data
+TFS build containing detailled build data
 
 .Example
 Get-TfsCompilationInfo $tfsBuild
 
 .Outputs
-Build messages details on success / null on fail
+Ordered dictionnary collection containing build compilation warning and errors messages details on success / null object on fail
 #> 
 Function Get-TfsCompilationInfo
 {
@@ -512,19 +509,19 @@ Function Get-TfsCompilationInfo
 
 <# 
 .Synopsis
-Get Tfs Collection and server from Project Uri
+Get TFS projects collection and services from Project Uri
 
 .Description
-Use GetTeamProjectCollection method from TfsTeamProjectCollectionFactory class to get Project Collection from Project Uri, check if Tfs is authenticated, if so get builds server, work item and test management service. 
+Use GetTeamProjectCollection method from TfsTeamProjectCollectionFactory class to get Project Collection from Project Uri, check if TFS is authenticated, if so get builds server, work item and test management services. 
 
 .Parameter TfsCollectionUri
-Tfs Team project Uri
+TFS team projects collection Uri
 
 .Example
-Get-TfsConnection "https://tfs.axacolor.igo6.com/tfs/DefaultCollection"
+Get-TfsConnection "https://tfs.myProjectsColUri.com/DefaultCollection"
 
 .Outputs
-TfsCollection on success / null on fail
+Object containing TFS projects collection and services on success / null object on fail
 #> 
 Function Get-TfsConnection
 {
@@ -589,13 +586,13 @@ Function Get-TfsConnection
 Get TFS environment variables
 
 .Description
-get tfs environment serialized into PsObject,work only with TFS builds
+Get TFS environment serialized into PsObject, work only from TFS server when building
 
 .Example
 Get-TfsEnvironment
 
 .Outputs
-PSObject containing TFS env,null on fail
+PSObject containing TFS environment variables, null object on fail
 #>
 Function Get-TfsEnvironment
 {
@@ -604,26 +601,26 @@ Function Get-TfsEnvironment
 		$userName = "$($env:USERDOMAIN)\$($env:USERNAME)"
 		$date = Get-Date -Format "yyyy.MM.dd_HH.mm.ss.fff"
 
-		$tfs = New-Object -TypeName PSObject
-		$tfs | Add-Member -NotePropertyName User -NotePropertyValue $userName
-		$tfs | Add-Member -NotePropertyName DateTime -NotePropertyValue $date
-		$tfs | Add-Member -NotePropertyName BuildName -NotePropertyValue $env:TF_BUILD_BUILDDEFINITIONNAME
-		$tfs | Add-Member -NotePropertyName BuildDirectory -NotePropertyValue $env:TF_BUILD_BUILDDIRECTORY
-		$tfs | Add-Member -NotePropertyName BuildReason -NotePropertyValue $env:TF_BUILD_BUILDREASON
-		$tfs | Add-Member -NotePropertyName BuildUri -NotePropertyValue $env:TF_BUILD_BUILDURI
-		$tfs | Add-Member -NotePropertyName CollectionUri -NotePropertyValue $env:TF_BUILD_COLLECTIONURI
-		$tfs | Add-Member -NotePropertyName DropLocation -NotePropertyValue $env:TF_BUILD_DROPLOCATION
-		$tfs | Add-Member -NotePropertyName Changeset -NotePropertyValue ($env:TF_BUILD_SOURCEGETVERSION -replace '^C(.*)$','$1')
-		$tfs | Add-Member -NotePropertyName SourcesDirectory -NotePropertyValue $env:TF_BUILD_SOURCESDIRECTORY
-		$tfs | Add-Member -NotePropertyName TestResultDirectory -NotePropertyValue $env:TF_BUILD_TESTRESULTSDIRECTORY
+		$TFS = New-Object -TypeName PSObject
+		$TFS | Add-Member -NotePropertyName User -NotePropertyValue $userName
+		$TFS | Add-Member -NotePropertyName DateTime -NotePropertyValue $date
+		$TFS | Add-Member -NotePropertyName BuildName -NotePropertyValue $env:TF_BUILD_BUILDDEFINITIONNAME
+		$TFS | Add-Member -NotePropertyName BuildDirectory -NotePropertyValue $env:TF_BUILD_BUILDDIRECTORY
+		$TFS | Add-Member -NotePropertyName BuildReason -NotePropertyValue $env:TF_BUILD_BUILDREASON
+		$TFS | Add-Member -NotePropertyName BuildUri -NotePropertyValue $env:TF_BUILD_BUILDURI
+		$TFS | Add-Member -NotePropertyName CollectionUri -NotePropertyValue $env:TF_BUILD_COLLECTIONURI
+		$TFS | Add-Member -NotePropertyName DropLocation -NotePropertyValue $env:TF_BUILD_DROPLOCATION
+		$TFS | Add-Member -NotePropertyName Changeset -NotePropertyValue ($env:TF_BUILD_SOURCEGETVERSION -replace '^C(.*)$','$1')
+		$TFS | Add-Member -NotePropertyName SourcesDirectory -NotePropertyValue $env:TF_BUILD_SOURCESDIRECTORY
+		$TFS | Add-Member -NotePropertyName TestResultDirectory -NotePropertyValue $env:TF_BUILD_TESTRESULTSDIRECTORY
 
-		Write-LogObject $tfs "TFS environments variables"
+		Write-LogObject $TFS "TFS environments variables"
 	}
 	catch
 	{
 		# log warning
 		Write-LogWarning "Error Get-TfsEnvironment -Exception $($_.Exception.Message)"
-		$tfs = $null
+		$TFS = $null
 	}
 
 	return $tfs
@@ -631,37 +628,37 @@ Function Get-TfsEnvironment
 
 <# 
 .Synopsis
-Return last executed TFS builds informations
+Return last executed TFS builds informations, from build name
 
 .Description
-First perfom a fast search on all builds definition to get last TfsBuildNumber, then a deep search on that build number
+First perfom a fast search on all builds definition to get last build number from build name, then perform a detailled search on that build number
 
 .Parameter TfsCollectionUri
-Tfs Team project Uri
+TFS team projects collection Uri
  
 .Parameter TfsProjectName
-Project Name from TFS collection
+TFS project name as string
 
 .Parameter TfsBuildName
-Name of the builds to return
+Name of the build to return
 
 .Parameter Language
-Language used in code analysis error descriptions (only used in FullDetails mode)
+Language used in code analysis items descriptions (only used in FullDetails mode)
 
 .Parameter Details
-switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
+Switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
 
 .Parameter FullDetails
-switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results and full detailled informations array
+Switch, set to true if you wan't to compile info from build errors, build warnings, UnitTest and code coverage results into a full detailled readable array
 
 .Parameter RecentBuild
-switch, set to true if your build is less than 24h age, to speed up build search
+Switch, set to true if you known last build is less than 24h age, to speed up build search process
 
 .Example
-Get-TfsLastExecutedBuildDetails "https://tfs.axacolor.igo6.com/tfs/DefaultCollection" "COLOR-SP" "CI-IGO6-Main"
+Get-TfsLastExecutedBuildDetails "https://tfs.myProjectsColUri.com/DefaultCollection" "myProj" "CI-myProject-Main"
 
 .Outputs
-Tfs build on success / null on fail
+PSObject containing TFS build details on success / null object on fail
 #> 
 Function Get-TfsLastExecutedBuildDetails
 {
@@ -708,19 +705,19 @@ Function Get-TfsLastExecutedBuildDetails
 
 <# 
 .Synopsis
-Return code analysis details from tfs builds
+Return unit tests results from TFS builds
 
 .Description
-return an array containing code analysis errors and warning occurency by ids
+Return an array containing unit test result in a readable format
 
 .Parameter TfsBuild
-full build containing all build data
+TFS build containing detailled build data
 
 .Example
 Get-TfsUnitTestsInfo $tfsBuild
 
 .Outputs
-code analysis details on success / null on fail
+Ordered dictionnary collection containing Unit test details on success / null object on fail
 #> 
 Function Get-TfsUnitTestsInfo
 {
