@@ -1378,6 +1378,66 @@ Function Test-XPath
 
 <#
 .Synopsis
+import modules from ColorKit
+ 
+.Description
+Import modules by module short name with force
+ 
+.Parameter Names
+Short names list of the modules to import (not mandatory, default = all modules)
+
+.Parameter Assert
+switch : select if you don't want to force import on already loaded modules
+
+.Example
+Add-Modules "Infra"
+#>
+Function Add-Modules
+{
+    [CmdletBinding()]
+    Param
+    (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
+		[Parameter(Mandatory=$false,Position=1)][switch]$Assert )
+ 
+    Write-LogDebug "Start Add-Modules"
+ 
+    try
+    {
+        if ($ShortNames)
+        {
+            foreach ($shortName in $ShortNames)
+            {
+				if (!$Assert -or !(Get-Module -Name "Module-$shortName"))
+				{
+					$modulePath = [IO.Path]::Combine($global:ModulesFolder, "Module-$shortName.psm1")
+					Import-Module $modulePath -Force -Global
+				}
+            }
+        }
+        else
+        {
+			if ($Assert)
+			{
+				Get-ChildItem ($global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Import-Module -Name $_.FullName -Force -Global }
+			}
+			else
+			{
+				Get-ChildItem ($global:ModulesFolder) | % { Import-Module -Name $_.FullName -Force -Global }
+			}
+        }
+
+	    # trace Success
+	    Write-LogDebug "Success Add-Modules"
+    }
+    catch
+    {
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+}
+
+<#
+.Synopsis
 Create folders if they don't not exists
 
 .Description
