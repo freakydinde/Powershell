@@ -564,7 +564,7 @@ Function Get-TfsConnection
 		}
 		else
 		{
-			Write-LogWarning "your are not authenticated to $TfsCollectionUri"
+			Write-LogWarning "you are not authenticated to $TfsCollectionUri"
 		}
 
 	    # trace Success
