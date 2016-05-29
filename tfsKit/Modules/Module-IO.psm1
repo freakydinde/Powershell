@@ -1518,7 +1518,7 @@ switch, if true get uppercase result
 .Parameter Low
 switch, if true get lowercase result
 
-.Output
+.Outputs
 searched string or blank if not found
 #>
 Function Get-InString
@@ -1734,7 +1734,7 @@ perform a sha256 compute then convert to String and return
 .Parameter File
 file to compute
 
-.Output
+.Outputs
 content-md5 as base64 String \ null if error
 #>
 Function Get-SHA256
