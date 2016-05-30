@@ -16,9 +16,8 @@ contain method that perform operation on TFS projects collection, get builds dat
 # import Input\Output module : logging methods, $global variables, IO helpers (IO module is meant be stored on the same folder than this module : Root\Modules)
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
-# import TFS assemblies ($global:AssembliesFolder come from Module-IO and represent Root\Assemblies folder)
-$assembliesShortName = @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
-$assembliesShortName | % { Add-Type -Path ([IO.Path]::Combine($global:AssembliesFolder, "Microsoft.$_.dll")) }
+# import TFS assemblies (Add-Assemblies come from Module-IO)
+Add-Assemblies @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
 
 #endregion
 

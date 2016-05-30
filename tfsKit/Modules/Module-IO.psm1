@@ -427,16 +427,18 @@ Function Write-LogError
 		}
 		else
 		{
-			[string]$exceptionType = $Exception.GetType()
-			[string]$text = "at $(Get-Date -Format 'HH.mm.ss.fff') an $exceptionType exception was thrown :$([Environment]::NewLine)"
+			[string]$text = "at $(Get-Date -Format 'HH.mm.ss.fff') an $($Exception.GetType()) exception was thrown :$([Environment]::NewLine)"
 
 			$message = ($InvocationInfo | Select-Object MyCommand, ScriptLineNumber, ScriptName, Line, OffsetInLine | Format-List | Out-String)
 			$message += [Environment]::NewLine
 
-			switch ($exceptionType)
+			if ($Exception -is [System.Reflection.ReflectionTypeLoadException])
 			{
-				"System.Reflection.ReflectionTypeLoadException" { $message += ($Exception | Select-Object Message, Source, LoaderExceptions, StackTrace | Format-List | Out-String) }
-				default { $message += ($Exception | Select-Object Message, Source, ErrorCode, InnerException, StackTrace | Format-List | Out-String) }
+				$message += ($Exception | Select-Object Message, Source, LoaderExceptions, StackTrace | Format-List | Out-String)
+			}
+			else
+			{
+				$message += ($Exception | Select-Object Message, Source, ErrorCode, InnerException, StackTrace | Format-List | Out-String)
 			}
 
 			$text += Format-Message $message $Title $false $false $LineAfterTitle
@@ -1383,6 +1385,59 @@ Function Test-XPath
 #endregion
 
 #region TOOLS
+
+<#
+.Synopsis
+Import assemblies array from ColorKit
+ 
+.Description
+Import assemblies by assembly short name array
+ 
+.Parameter ShortNames
+Short names list of the assemblies to import
+
+.Parameter NotMicrosoft
+Switch : select if you do not want to add "Microsoft" before assembly short name
+
+.Example
+Add-Assemblies @("SqlServer.SqlEnum", "SqlServer.Smo")
+#>
+Function Add-Assemblies
+{
+    [CmdletBinding()]
+    Param
+    (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
+		[Parameter(Mandatory=$false,Position=1)][switch]$NotMicrosoft )
+ 
+    Write-LogDebug "Start Add-Assemblies"
+ 
+    try
+    {
+        foreach ($name in $ShortNames)
+        {
+			if ($NotMicrosoft)
+			{
+				$assemblyName = "$name.dll"
+			}
+			else
+			{
+				$assemblyName = "Microsoft.$name.dll"
+			}
+
+            $assemblyPath = [IO.Path]::Combine($global:AssembliesFolder, $assemblyName)
+
+            Add-Type -Path $assemblyPath
+        }
+
+	    # trace Success
+	    Write-LogDebug "Success Add-Assemblies"
+    }
+    catch
+    {
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+}
 
 <#
 .Synopsis
