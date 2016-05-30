@@ -1408,9 +1408,9 @@ Function Add-Assemblies
     Param
     (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
 		[Parameter(Mandatory=$false,Position=1)][switch]$NotMicrosoft )
-Â 
+ 
     Write-LogDebug "Start Add-Assemblies"
-Â 
+ 
     try
     {
         foreach ($name in $ShortNames)
@@ -1425,7 +1425,8 @@ Function Add-Assemblies
 			}
 
             $assemblyPath = [IO.Path]::Combine($global:AssembliesFolder, $assemblyName)
-
+			
+			Write-LogVerbose "Add-Type -Path $assemblyPath"
             Add-Type -Path $assemblyPath
         }
 
@@ -1481,11 +1482,11 @@ Function Add-Modules
         {
 			if ($Assert)
 			{
-				Get-ChildItem ($global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Import-Module -Name $_.FullName -Force -Global }
+				Get-ChildItem ($global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
 			}
 			else
 			{
-				Get-ChildItem ($global:ModulesFolder) | % { Import-Module -Name $_.FullName -Force -Global }
+				Get-ChildItem ($global:ModulesFolder) | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
 			}
         }
 
