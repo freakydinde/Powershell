@@ -1139,22 +1139,22 @@ Function Get-XPathValue
 Set Xml element or attribute value
 
 .Description
-Set or (un)comment an xml element or attribute identified by XPath
+Set / Add / Remove / Replace / Comment or UnComment an xml element or attribute identified by XPath
 
 .Parameter File
-full path to the file edited
+full path to the edited file
 
 .Parameter XPath
-Xpath to property to edit
+Xpath to the edited element or attribute
 
 .Parameter Value
-Value to set
+Value to Set \ Add \ Replace
 
 .Parameter Type
 Edition type : setValue, add, remove, replace, comment, unComment
 
 .Parameter addMode
-Insertion mode : before \ after Xpath given
+Insertion mode , insert Value before or after Xpath
 
 .Example
 Set-XPathValue "C:\example.xml" "/system.web/authentication/@mode" "true"
@@ -1325,13 +1325,13 @@ Function Set-XPathValue
 
 <#
 .Synopsis
-Test Xpath existence
+Test if an attribute or element exist
 
 .Description
-send true if XPath is found on File, false if not
+Send true if XPath is found on File, false if not
 
 .Parameter File
-full path to the file edited
+Full path to the edited file
 
 .Parameter XPath
 Xpath to test
@@ -1340,7 +1340,7 @@ Xpath to test
 Test-XPath "C:\example.xml" "/system.web/authentication/@mode"
 
 .Outputs
-true if XPath exist / false if XPath does not exist
+True if XPath exist / False if XPath does not exist or method fail
 #>
 Function Test-XPath
 {
@@ -1386,16 +1386,16 @@ Function Test-XPath
 
 <#
 .Synopsis
-import modules from ColorKit
+Import modules from Kit Modules folder
  
 .Description
-Import modules by module short name with force
+Import modules by module short name with -Global & -Force switch
  
 .Parameter Names
 Short names list of the modules to import (not mandatory, default = all modules)
 
 .Parameter Assert
-switch : select if you don't want to force import on already loaded modules
+Switch : select if you want to test already loaded modules
 
 .Example
 Add-Modules "Infra"
@@ -1452,10 +1452,7 @@ Create folders if they don't not exists
 Create folders if they don't exists, using [IO.Directory]::Exists and New-Item -Force
 
 .Parameter Folders
-full path list of the folder to assert
-
-.Example
-Assert-Folders "H:\Logs\QA2"
+Full path list of the folders to assert
 
 .Example
 Assert-Folders "H:\Logs\QA2", "F:\Data\QA2"
@@ -1489,7 +1486,7 @@ Function Assert-Folders
 
 <#
 .Synopsis
-string extract fonction
+String extract fonction
 
 .Description
 Get string part delimited by a separator
@@ -1498,28 +1495,28 @@ Get string part delimited by a separator
 String to seek
 
 .Parameter Delimiter
-characters delimiter
+Characters delimiter
 
 .Parameter SecondDelimiter
-characters second delimiter
+Characters second delimiter
 
 .Parameter Last
-switch, if true get last occurence of delimiter (default = first)
+Switch, if true get last occurence of delimiter (default = first)
 
 .Parameter SecondLast
-switch, if true get last occurence of second delimiter (default = first)
+Switch, if true get last occurence of second delimiter (default = first)
 
 .Parameter Right
-switch, if true get right part of the string (default = left, switch disabled if 2 delimiters)
+Switch, if true get right part of the string (default = left, switch disabled if 2 delimiters)
 
 .Parameter Up
-switch, if true get uppercase result
+Switch, if true get uppercase result
 
 .Parameter Low
-switch, if true get lowercase result
+Switch, if true get lowercase result
 
 .Outputs
-searched string or blank if not found
+Searched string or blank if not found
 #>
 Function Get-InString
 {
@@ -1630,28 +1627,28 @@ Function Get-InString
 
 <#
 .Synopsis
-prompt for user confirmation
+Prompt for user confirmation
 
 .Description
-send prompt for a Yes\No question
+Send prompt for a Yes\No question
 
 .Parameter Title
-text for title
+Text for prompt title
 
 .Parameter Message
-text for message
+Text for prompt message
 
 .Parameter YesCaption
-text for yes option
+Text for yes option
 
 .Parameter NoCaption
-text for no caption
+Text for no caption
 
 .Example
 Get-Prompt "proceed installation ?"
 
 .Outputs
-$true or $false
+True or False depending on user choice
 #>
 Function Get-Prompt
 {
@@ -1689,19 +1686,19 @@ Function Get-Prompt
 
 <#
 .Synopsis
-convert secure string
+Convert secure string to string
 
 .Description
-convert secure string to plain text string using Runtime.InteropServices.Marshal library
+Convert secure string to plain text string using Runtime.InteropServices.Marshal library
 
 .Parameter SecureString
-secure string to convert
+Secure string to convert
 
 .Example
 Get-SecureString -SecureString $secureStr
 
 .Outputs
-Secure string as string
+Secure string as plain text string
 #>
 Function Get-SecureString
 {
@@ -1726,16 +1723,16 @@ Function Get-SecureString
 
 <#
 .Synopsis
-get sha256 hash
+Get sha256 hash from file path
 
 .Description
-perform a sha256 compute then convert to String and return
+Perform a sha256 compute then convert to String and return
 
 .Parameter File
-file to compute
+File path to the computed file
 
 .Outputs
-content-md5 as base64 String \ null if error
+File SHA256 hash as base64 String \ null if exception
 #>
 Function Get-SHA256
 {
@@ -1781,7 +1778,7 @@ Create or clean temp folder
 Get-TempFolder
 
 .Outputs
-$tempFolder on success, $null on fail
+TempFolder path on success, null on method fail
 #>
 Function Get-TempFolder
 {
@@ -1812,19 +1809,16 @@ Function Get-TempFolder
 
 <#
 .Synopsis
-remove folder
+Remove folder
 
 .Description
-deals with remove-item bug with recurse and not empty folders
+Deals with remove-item bug on recurse + not empty folders
 
 .Parameter FolderPath
-full folder path
+Full path to the folder to remove
 
 .Example
 Remove-Folder "C:\Test"
-
-.Outputs
-none
 #>
 Function Remove-Folder
 {
@@ -1856,19 +1850,19 @@ Function Remove-Folder
 
 <#
 .Synopsis
-convert string to secure string
+Convert string to secure string
 
 .Description
-convert string to secure string using ConvertTo-String
+Convert string to secure string using ConvertTo-String with -AsPlainText & -Force switchs
 
 .Parameter String
-string to convert
+String to convert
 
 .Example
 Set-SecureString "bonjour"
 
 .Outputs
-string as secure string
+String as secure string
 #>
 Function Set-SecureString
 {
