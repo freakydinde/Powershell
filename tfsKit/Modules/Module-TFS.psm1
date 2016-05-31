@@ -7,16 +7,16 @@ contain method that perform operation on TFS projects collection, get builds dat
 
 .Notes 
 	fileName	: Module-TFS.psm1
-	version		: 0.032
+	version		: 0.033
 	author		: Armand Lacore
 #>
 
 #region <MODULE PARAMETERS>
 
-# import Input\Output module : logging methods, $global variables, IO helpers (IO module is meant be stored on the same folder than this module : Root\Modules)
+# import Input\Output module : helper for logging, $global variables, IO and xml (IO module is meant be stored on the same folder than this module : Root\Modules)
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
-# import TFS assemblies (Add-Assemblies come from Module-IO)
+# import TFS assemblies (Add-Assemblies come from Module-IO, it add Microsoft.$_.dll and ask for LoaderException on error loading)
 Add-Assemblies @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
 
 #endregion
