@@ -1,6 +1,5 @@
-# Module-Tfs.psm1
+°Module-Tfs.psm1
 
-<# 
 .Synopsis
 functionnality to query team foundation servers builds
 
@@ -11,9 +10,8 @@ contain method that perform operation on TFS projects collection, get builds dat
 	fileName	: Module-TFS.psm1
 	version		: 0.033
 	author		: Armand Lacore
-#>
 
-# TFS 
+°TFS 
 
 Get-TfsBuildDetails
 Get-TfsBuilds 
@@ -25,9 +23,8 @@ Get-TfsEnvironment
 Get-TfsLastExecutedBuildDetails
 Get-TfsUnitTestsInfo
 
-# Module-IO.psm1
+°Module-IO.psm1
 
-<#
 .Synopsis
 Input & Output helper
 
@@ -38,9 +35,8 @@ contain IO fonctionnality : log, xml, IO.
 	fileName	: Module-IO.psm1
 	version		: 0.52
 	author		: Armand Lacore
-#>
 
-# LOGGIN
+°LOGGIN
 
 Add-ToEachLine
 Format-Message
@@ -57,14 +53,14 @@ Write-LogWarning
 Write-ObjectToHtml
 Write-ObjectToXml
 
-# XML
+°XML
 
 Get-Data
 Get-XPathValue
 Set-XPathValue
 Test-XPath
 
-# IO 
+°IO 
 
 Add-Assemblies
 Add-Modules
@@ -76,4 +72,3 @@ Get-SHA256
 Get-TempFolder
 Remove-Folder
 Set-SecureString
-
