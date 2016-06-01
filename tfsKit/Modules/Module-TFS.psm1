@@ -17,7 +17,7 @@ contain method that perform operation on TFS projects collection, get builds dat
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
 # import TFS assemblies (Add-Assemblies come from Module-IO, it add Microsoft.$_.dll and ask for LoaderException on error loading)
-Add-Assemblies @("TeamFoundation.Build.Common","TeamFoundation.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","VisualStudio.Services.Client")
+Add-Assemblies @("TeamFoundation.Client","TeamFoundation.Build.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","VisualStudio.Services.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","TeamFoundation.Build.Common")
 
 #endregion
 
@@ -77,7 +77,7 @@ Function Get-TfsBuildDetails
 		if ($tfsBuilds)
 		{
 			$tfsBuild = $tfsBuilds.Builds | Select-Object -First 1
-			$tfsBuild | Add-Member -NotePropertyName TFS -NotePropertyValue $($tfsBuilds.Tfs)
+			$tfsBuild | Add-Member -NotePropertyName Tfs -NotePropertyValue $($tfsBuilds.Tfs)
 
 			if ($Details -or $FullDetails)
 			{
@@ -225,7 +225,7 @@ Function Get-TfsBuilds
 			[Parameter(Mandatory=$false,Position=4)][string]$InformationTypes=$null,
 			[Parameter(Mandatory=$false,Position=5)][DateTime]$MinFinishTime=0,
 			[Parameter(Mandatory=$false,Position=6)][DateTime]$MaxFinishTime=0,
-			[Parameter(Mandatory=$false,Position=7)][ValidateSet("None","Definitions","Agents","Workspaces","Controllers","Process","BatchedRequests","HistoricalBuilds","All")][string]$QueryOptions="All",
+			[Parameter(Mandatory=$false,Position=7)][ValidateSet("None","Definitions","Agents","Workspaces","Controllers","Process","BatchedRequests","HistoricalBuilds","All")][string]$QueryOptions="None",
 			[Parameter(Mandatory=$false,Position=8)][ValidateSet("StartTimeAscending","StartTimeDescending","FinishTimeAscending","FinishTimeDescending")][string]$QueryOrder="StartTimeAscending",
 			[Parameter(Mandatory=$false,Position=9)][ValidateSet("None","InProgress","Succeeded","PartiallySucceeded","Failed","Stopped","NotStarted","All")][string]$Status="All" )
 
@@ -233,7 +233,7 @@ Function Get-TfsBuilds
 
     try
     {
-        $TFS = Get-TfsConnection $TfsCollectionUri
+        $tfs = Get-TfsConnection $TfsCollectionUri
 
 	    if ($tfs.HasAuthenticated)
 	    {
@@ -255,7 +255,7 @@ Function Get-TfsBuilds
 			
 			if ($tfsBuilds)
 			{
-				$tfsBuilds | Add-Member -NotePropertyName TFS -NotePropertyValue $tfs
+				$tfsBuilds | Add-Member -NotePropertyName Tfs -NotePropertyValue $tfs
 			}
 			else
 			{
@@ -600,26 +600,26 @@ Function Get-TfsEnvironment
 		$userName = "$($env:USERDOMAIN)\$($env:USERNAME)"
 		$date = Get-Date -Format "yyyy.MM.dd_HH.mm.ss.fff"
 
-		$TFS = New-Object -TypeName PSObject
-		$TFS | Add-Member -NotePropertyName User -NotePropertyValue $userName
-		$TFS | Add-Member -NotePropertyName DateTime -NotePropertyValue $date
-		$TFS | Add-Member -NotePropertyName BuildName -NotePropertyValue $env:TF_BUILD_BUILDDEFINITIONNAME
-		$TFS | Add-Member -NotePropertyName BuildDirectory -NotePropertyValue $env:TF_BUILD_BUILDDIRECTORY
-		$TFS | Add-Member -NotePropertyName BuildReason -NotePropertyValue $env:TF_BUILD_BUILDREASON
-		$TFS | Add-Member -NotePropertyName BuildUri -NotePropertyValue $env:TF_BUILD_BUILDURI
-		$TFS | Add-Member -NotePropertyName CollectionUri -NotePropertyValue $env:TF_BUILD_COLLECTIONURI
-		$TFS | Add-Member -NotePropertyName DropLocation -NotePropertyValue $env:TF_BUILD_DROPLOCATION
-		$TFS | Add-Member -NotePropertyName Changeset -NotePropertyValue ($env:TF_BUILD_SOURCEGETVERSION -replace '^C(.*)$','$1')
-		$TFS | Add-Member -NotePropertyName SourcesDirectory -NotePropertyValue $env:TF_BUILD_SOURCESDIRECTORY
-		$TFS | Add-Member -NotePropertyName TestResultDirectory -NotePropertyValue $env:TF_BUILD_TESTRESULTSDIRECTORY
+		$tfs = New-Object -TypeName PSObject
+		$tfs | Add-Member -NotePropertyName User -NotePropertyValue $userName
+		$tfs | Add-Member -NotePropertyName DateTime -NotePropertyValue $date
+		$tfs | Add-Member -NotePropertyName BuildName -NotePropertyValue $env:TF_BUILD_BUILDDEFINITIONNAME
+		$tfs | Add-Member -NotePropertyName BuildDirectory -NotePropertyValue $env:TF_BUILD_BUILDDIRECTORY
+		$tfs | Add-Member -NotePropertyName BuildReason -NotePropertyValue $env:TF_BUILD_BUILDREASON
+		$tfs | Add-Member -NotePropertyName BuildUri -NotePropertyValue $env:TF_BUILD_BUILDURI
+		$tfs | Add-Member -NotePropertyName CollectionUri -NotePropertyValue $env:TF_BUILD_COLLECTIONURI
+		$tfs | Add-Member -NotePropertyName DropLocation -NotePropertyValue $env:TF_BUILD_DROPLOCATION
+		$tfs | Add-Member -NotePropertyName Changeset -NotePropertyValue ($env:TF_BUILD_SOURCEGETVERSION -replace '^C(.*)$','$1')
+		$tfs | Add-Member -NotePropertyName SourcesDirectory -NotePropertyValue $env:TF_BUILD_SOURCESDIRECTORY
+		$tfs | Add-Member -NotePropertyName TestResultDirectory -NotePropertyValue $env:TF_BUILD_TESTRESULTSDIRECTORY
 
-		Write-LogObject $TFS "TFS environments variables"
+		Write-LogObject $tfs "TFS environments variables"
 	}
 	catch
 	{
 		# log warning
 		Write-LogWarning "Error Get-TfsEnvironment -Exception $($_.Exception.Message)"
-		$TFS = $null
+		$tfs = $null
 	}
 
 	return $tfs
@@ -677,11 +677,11 @@ Function Get-TfsLastExecutedBuildDetails
 		if ($RecentBuild)
 		{
 			$yesterday = (Get-Date).AddDays(-1)
-			$tfsBuilds = Get-TfsBuilds $TfsCollectionUri $TfsProjectName $TfsBuildName -QueryOrder "StartTimeDescending" -QueryOptions "Definitions" -MinFinishTime $yesterday
+			$tfsBuilds = Get-TfsBuilds $TfsCollectionUri $TfsProjectName $TfsBuildName -QueryOrder "StartTimeDescending" -MinFinishTime $yesterday
 		}
 		else
 		{
-			$tfsBuilds = Get-TfsBuilds $TfsCollectionUri $TfsProjectName $TfsBuildName -QueryOrder "StartTimeDescending" -QueryOptions "Definitions"
+			$tfsBuilds = Get-TfsBuilds $TfsCollectionUri $TfsProjectName $TfsBuildName -QueryOrder "StartTimeDescending"
 		}
 
         $tfsLastBuildNumber = ($tfsBuilds.Builds | ? { $_.Status -ne "InProgress" } | Select-Object -First 1).BuildNumber
