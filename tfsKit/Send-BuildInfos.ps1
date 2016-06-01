@@ -34,14 +34,9 @@ Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French",
 $modulesShortName = @("IO", "Tfs")
 $modulesShortName | if (!(Get-Module -Name "Module-$($_)")) { Import-Module ([IO.Path]::Combine($global:ModulesFolder, "Module-$($_).psm1")) -Force -Global }
 
-# define verbose log level and log colors (functions from Module-IO)
-Set-LogColor
+# define verbose log level and create or clean temp folder Root\TempYYYYMMddHHmmssfff (functions from Module-IO)
 Set-LogLevel $LogLevel
-
-# create or clean temp folder
-$tempFolder = [IO.Path]::Combine($global:RootFolder, "Temp")
-if (!(Test-Path $tempFolder)) { New-Item $tempFolder -ItemType Directory -Force | Out-Null }
-else { Get-ChildItem $tempFolder | % { Remove-Item $_.FullName -Force -ErrorAction Continue } }
+$tempFolder = Get-TempFolder
 		
 try
 {

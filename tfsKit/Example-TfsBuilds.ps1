@@ -12,13 +12,13 @@ timed examples on QueryBuilds methods from definition specs, see https://msdn.mi
 #>
 
 # script parameters
-$testOccurency = 3
+$testOccurency = 2
 
 # tfs parameters
-$tfsCollectionUri = "https://tfs.yourProjectName/tfs/DefaultCollection"
-$tfsProjectName = "projectname"
-$tfsBuildName = "buildname"
-$tfsBuildNumber = "buildnumber"
+$tfsCollectionUri = "https://tfs.axacolor.igo6.com/tfs/DefaultCollection"
+$tfsProjectName = "COLOR-SP"
+$tfsBuildName = "CI-IGO6-R1.2"
+$tfsBuildNumber = "CI-IGO6-R1.2_20160531.1"
 
 # import IO and TFS modules (Hosted in Root\Modules)
 $modulesShortName = @("IO", "Tfs")
@@ -65,14 +65,27 @@ Function TimeTfsQuery([AllowNull()]$BuildNumber, [AllowNull()]$InformationTypes,
 	$tfsBuilds.Builds | ConvertTo-Json | Add-Content ([IO.Path]::Combine($global:LogsFolder, "BN_$(MakeItReadable($BuildNumber))-IT_$(MakeItReadable($InformationTypes))-QO_$($buildSpecification.QueryOptions)_builds-$($stopwatch.ElapsedMilliseconds)_ms.json"))
 }
 
+Function SimpleCall
+{
+	$stopwatch = New-Object -TypeName System.Diagnostics.Stopwatch
+	$stopwatch.Start()
+
+	$tfsBuilds = $buildServer.QueryBuilds($tfsProjectName, $tfsBuildName)
+	$stopwatch.Stop()
+	
+	Write-LogHost "time : $($stopwatch.ElapsedMilliseconds) ms"
+	$tfsBuilds.Builds | ConvertTo-Json | Add-Content ([IO.Path]::Combine($global:LogsFolder, "SimpleOverload_builds-$($stopwatch.ElapsedMilliseconds)_ms.json"))
+}
+
 for ($i=0; $i -le $testOccurency; $i++)
 {
-	TimeTfsQuery "*" $null "None"
+	# TimeTfsQuery "*" $null "None"
 	# TimeTfsQuery "*" $null "All"
-	TimeTfsQuery "*" "*" "None"
-	# TimeTfsQuery "*" "*" "All"
-	TimeTfsQuery $tfsBuildNumber $null "None"
+	SimpleCall
+	TimeTfsQuery "*" "*" "All"
+	# TimeTfsQuery "*" "*" "None"
+	# TimeTfsQuery $tfsBuildNumber $null "None"
 	# TimeTfsQuery $tfsBuildNumber $null "All"
-	TimeTfsQuery $tfsBuildNumber "*" "None"
+	# TimeTfsQuery $tfsBuildNumber "*" "None"
 	# TimeTfsQuery $tfsBuildNumber "*" "All"
 }

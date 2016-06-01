@@ -28,7 +28,7 @@ Add-Assemblies @("TeamFoundation.Client","TeamFoundation.Build.Client","TeamFoun
 get TFS builds informations
 
 .Description
-get build full details from projets collection URI, project name and build number
+get build details (build errors, build warnings, UnitTest and code coverage results) from projets collection URI, project name and build number
 
 .Parameter TfsCollectionUri
 TFS team projects collection Uri
@@ -41,9 +41,6 @@ TFS build number as string, format : buildName_buildDate_iteration
 
 .Parameter Language
 Language used in code analysis items descriptions (only used in FullDetails mode)
-
-.Parameter Details
-Switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
 
 .Parameter FullDetails
 Switch, set to true if you wan't to compile info from build errors, build warnings, UnitTest and code coverage results into a full detailled readable array
@@ -61,8 +58,7 @@ Function Get-TfsBuildDetails
 			[Parameter(Mandatory=$true,Position=1)][string]$TfsProjectName,
 			[Parameter(Mandatory=$true,Position=2)][string]$TfsBuildNumber,
 			[Parameter(Mandatory=$false,Position=3)][Validateset("English","French","Spanish")][string]$Language="English",
-			[Parameter(Mandatory=$false,Position=4)][switch]$Details,
-			[Parameter(Mandatory=$false,Position=5)][switch]$FullDetails )
+			[Parameter(Mandatory=$false,Position=4)][switch]$FullDetails )
 
     Write-LogDebug "Start Get-TfsBuildDetails"
 
@@ -79,71 +75,68 @@ Function Get-TfsBuildDetails
 			$tfsBuild = $tfsBuilds.Builds | Select-Object -First 1
 			$tfsBuild | Add-Member -NotePropertyName Tfs -NotePropertyValue $($tfsBuilds.Tfs)
 
-			if ($Details -or $FullDetails)
+			$tfsBuild | Add-Member -NotePropertyName BuildDuration -NotePropertyValue $($tfsBuild.FinishTime - $tfsBuild.StartTime)
+
+			# get compilation and code analysis errors and warnings
+			Write-LogVerbose "getting build errors and warning"
+			$buildErrors = [Microsoft.TeamFoundation.Build.Client.InformationNodeConverters]::GetBuildErrors($tfsBuild)               
+			$buildWarnings = [Microsoft.TeamFoundation.Build.Client.InformationNodeConverters]::GetBuildWarnings($tfsBuild)
+
+			$compilationErrors = $buildErrors | ? { $_.ErrorType -eq "Compilation" }
+			$compilationWarnings = $buildWarnings | ? { $_.WarningType -eq "Compilation" } 
+			$codeAnalysisErrors = $buildErrors | ? { $_.ErrorType -eq "StaticAnalysis" }
+			$codeAnalysisWarnings = $buildWarnings | ? { $_.WarningType -eq "StaticAnalysis" } 
+
+			# get compilation info
+			Write-LogVerbose "getting build compilation results"
+			$compilation = @()
+			foreach ($compilationMessage in $compilationErrors)
 			{
-				$tfsBuild | Add-Member -NotePropertyName BuildDuration -NotePropertyValue $($tfsBuild.FinishTime - $tfsBuild.StartTime)
-
-				# get compilation and code analysis errors and warnings
-				Write-LogVerbose "getting build errors and warning"
-				$buildErrors = [Microsoft.TeamFoundation.Build.Client.InformationNodeConverters]::GetBuildErrors($tfsBuild)               
-				$buildWarnings = [Microsoft.TeamFoundation.Build.Client.InformationNodeConverters]::GetBuildWarnings($tfsBuild)
-
-				$compilationErrors = $buildErrors | ? { $_.ErrorType -eq "Compilation" }
-				$compilationWarnings = $buildWarnings | ? { $_.WarningType -eq "Compilation" } 
-				$codeAnalysisErrors = $buildErrors | ? { $_.ErrorType -eq "StaticAnalysis" }
-				$codeAnalysisWarnings = $buildWarnings | ? { $_.WarningType -eq "StaticAnalysis" } 
-
-				# get compilation info
-				Write-LogVerbose "getting build compilation results"
-				$compilation = @()
-				foreach ($compilationMessage in $compilationErrors)
-				{
-					$compilationMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Error"
-					$compilation += $compilationMessage
-				}
-				foreach ($compilationMessage in $compilationWarnings)
-				{
-					$compilationMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
-					$compilation += $compilationMessage
-				}
-				$compilationIsSuccessFull = $(($compilation | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
-				$tfsBuild | Add-Member -NotePropertyName CompilationSucceed -NotePropertyValue $compilationIsSuccessFull
-				$tfsBuild | Add-Member -NotePropertyName Compilation -NotePropertyValue $compilation
-
-				# get code analysis info
-				Write-LogVerbose "getting build code analysis results"
-				$codeAnalysis = @()
-				foreach ($codeAnalysisMessage in $codeAnalysisErrors)
-				{
-					$codeAnalysisMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Error"
-					$codeAnalysis += $codeAnalysisMessage
-				}
-				foreach ($codeAnalysisMessage in $codeAnalysisWarnings)
-				{
-					$codeAnalysisMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
-					$codeAnalysis += $codeAnalysisMessage
-				}    
-				$codeAnalysisIsSuccessFull = $(($codeAnalysis | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
-				$tfsBuild | Add-Member -NotePropertyName CodeAnalysisSucceed -NotePropertyValue $codeAnalysisIsSuccessFull
-				$tfsBuild | Add-Member -NotePropertyName CodeAnalysis -NotePropertyValue $codeAnalysis
-
-				# get unit tests info
-				Write-LogVerbose "getting build unit tests results"
-				$unitTests = $tfsBuild.Tfs.TestManagementService.TestRuns.ByBuild($tfsBuild.Uri)
-
-				$testAreSuccessFull = $true
-				foreach ($testsSet in $tfsBuild.UnitTest)
-				{
-					if ([int]($testsSet.Statistics.FailedTests) -gt 0) { $testAreSuccessFull = $false }
-				}
-				$tfsBuild | Add-Member -NotePropertyName UnitTestsSucceed -NotePropertyValue $testAreSuccessFull
-				$tfsBuild | Add-Member -NotePropertyName UnitTests -NotePropertyValue $unitTests
-
-				Write-LogVerbose "getting build code coverage"
-				$codeCoverages = $tfsBuild.Tfs.TestManagementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
-				
-				$tfsBuild | Add-Member -NotePropertyName CodeCoverages -NotePropertyValue $($codeCoverages)
+				$compilationMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Error"
+				$compilation += $compilationMessage
 			}
+			foreach ($compilationMessage in $compilationWarnings)
+			{
+				$compilationMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
+				$compilation += $compilationMessage
+			}
+			$compilationIsSuccessFull = $(($compilation | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
+			$tfsBuild | Add-Member -NotePropertyName CompilationSucceed -NotePropertyValue $compilationIsSuccessFull
+			$tfsBuild | Add-Member -NotePropertyName Compilation -NotePropertyValue $compilation
+
+			# get code analysis info
+			Write-LogVerbose "getting build code analysis results"
+			$codeAnalysis = @()
+			foreach ($codeAnalysisMessage in $codeAnalysisErrors)
+			{
+				$codeAnalysisMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Error"
+				$codeAnalysis += $codeAnalysisMessage
+			}
+			foreach ($codeAnalysisMessage in $codeAnalysisWarnings)
+			{
+				$codeAnalysisMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
+				$codeAnalysis += $codeAnalysisMessage
+			}    
+			$codeAnalysisIsSuccessFull = $(($codeAnalysis | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
+			$tfsBuild | Add-Member -NotePropertyName CodeAnalysisSucceed -NotePropertyValue $codeAnalysisIsSuccessFull
+			$tfsBuild | Add-Member -NotePropertyName CodeAnalysis -NotePropertyValue $codeAnalysis
+
+			# get unit tests info
+			Write-LogVerbose "getting build unit tests results"
+			$unitTests = $tfsBuild.Tfs.TestManagementService.TestRuns.ByBuild($tfsBuild.Uri)
+
+			$testAreSuccessFull = $true
+			foreach ($testsSet in $tfsBuild.UnitTest)
+			{
+				if ([int]($testsSet.Statistics.FailedTests) -gt 0) { $testAreSuccessFull = $false }
+			}
+			$tfsBuild | Add-Member -NotePropertyName UnitTestsSucceed -NotePropertyValue $testAreSuccessFull
+			$tfsBuild | Add-Member -NotePropertyName UnitTests -NotePropertyValue $unitTests
+
+			Write-LogVerbose "getting build code coverage"
+			$codeCoverages = $tfsBuild.Tfs.TestManagementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
+			
+			$tfsBuild | Add-Member -NotePropertyName CodeCoverages -NotePropertyValue $($codeCoverages)
 
 			if ($FullDetails)
 			{
@@ -630,7 +623,7 @@ Function Get-TfsEnvironment
 Return last executed TFS builds informations, from build name
 
 .Description
-First perfom a fast search on all builds definition to get last build number from build name, then perform a detailled search on that build number
+First perfom a fast search on all builds definition to get last build number from build name, then perform a detailled search on that build number to return build errors, build warnings, UnitTest and code coverage results
 
 .Parameter TfsCollectionUri
 TFS team projects collection Uri
@@ -643,9 +636,6 @@ Name of the build to return
 
 .Parameter Language
 Language used in code analysis items descriptions (only used in FullDetails mode)
-
-.Parameter Details
-Switch, set to true if you wan't to get build errors, build warnings, UnitTest and code coverage results
 
 .Parameter FullDetails
 Switch, set to true if you wan't to compile info from build errors, build warnings, UnitTest and code coverage results into a full detailled readable array
@@ -665,10 +655,9 @@ Function Get-TfsLastExecutedBuildDetails
     Param (	[Parameter(Mandatory=$true,Position=0)][string]$TfsCollectionUri,
 			[Parameter(Mandatory=$true,Position=1)][string]$TfsProjectName,
 			[Parameter(Mandatory=$true,Position=2)][string]$TfsBuildName,
-			[Parameter(Mandatory=$false,Position=4)][Validateset("English","French","Spanish")][string]$Language="English",
-			[Parameter(Mandatory=$false,Position=5)][switch]$Details,
-			[Parameter(Mandatory=$false,Position=6)][switch]$FullDetails,
-			[Parameter(Mandatory=$false,Position=7)][switch]$RecentBuild )
+			[Parameter(Mandatory=$false,Position=3)][Validateset("English","French","Spanish")][string]$Language="English",
+			[Parameter(Mandatory=$false,Position=4)][switch]$FullDetails,
+			[Parameter(Mandatory=$false,Position=5)][switch]$RecentBuild )
 
     Write-LogDebug "Start Get-TfsLastExecutedBuildDetails"
 
@@ -686,7 +675,7 @@ Function Get-TfsLastExecutedBuildDetails
 
         $tfsLastBuildNumber = ($tfsBuilds.Builds | ? { $_.Status -ne "InProgress" } | Select-Object -First 1).BuildNumber
 
-        $tfsBuildDetails = Get-TfsBuildDetails $TfsCollectionUri $TfsProjectName $tfsLastBuildNumber $Language $Details $FullDetails
+        $tfsBuildDetails = Get-TfsBuildDetails $TfsCollectionUri $TfsProjectName $tfsLastBuildNumber $Language $FullDetails
 
 	    # trace Successs
 	    Write-LogDebug "Success Get-TfsLastExecutedBuildDetails"
