@@ -15,10 +15,10 @@ timed examples on QueryBuilds methods from definition specs, see https://msdn.mi
 $testOccurency = 3
 
 # tfs parameters
-$tfsCollectionUri = "https://tfs.axacolor.igo6.com/tfs/DefaultCollection"
-$tfsProjectName = "COLOR-SP"
-$tfsBuildName = "CI-IGO6-R1.2"
-$tfsBuildNumber = "CI-IGO6-R1.2_20160531.1"
+$tfsCollectionUri = "https://tfs.yourProjectName/tfs/DefaultCollection"
+$tfsProjectName = "projectname"
+$tfsBuildName = "buildname"
+$tfsBuildNumber = "buildnumber"
 
 # import IO and TFS modules (Hosted in Root\Modules)
 $modulesShortName = @("IO", "Tfs")
@@ -26,35 +26,6 @@ $modulesShortName | % { if (!(Get-Module -Name "Module-$_")) { Import-Module ([I
 
 $buildServer = (Get-TfsConnection $tfsCollectionUri).BuildServer
 
-Function TimeTfsQuery
-{
-	$stopwatch = New-Object -TypeName System.Diagnostics.Stopwatch
-	$stopwatch.Start()
-	
-	$buildSpecification = $buildServer.CreateBuildDetailSpec($tfsProjectName, $tfsBuildName)
-	$buildSpecification.QueryOptions = "None"
-	
-	$buildSpecification.InformationTypes = $null
-	$tfsBuilds = $buildServer.QueryBuilds($buildSpecification)
-	
-	# by default, QueryOrder property on build specification is StartTimeAscending
-	$tfsLastBuildNumber = ($tfsBuilds.Builds | ? { $_.Status -ne "InProgress" } | Select-Object -Last 1).BuildNumber
-
-	$buildSpecification.InformationTypes = "*"
-	$buildSpecification.BuildNumber = $tfsLastBuildNumber
-	$tfsBuild = $buildServer.QueryBuilds($buildSpecification)
-	
-	$stopwatch.Stop()
-	
-	Write-LogHost "time : $($stopwatch.ElapsedMilliseconds) ms"
-}
-
-for ($i=0; $i -le $testOccurency; $i++)
-{
-	TimeTfsQuery
-}
-
-<#
 Function TimeTfsQuery([AllowNull()]$BuildNumber, [AllowNull()]$InformationTypes, $QueryOptions)
 {
 	Function MakeItReadable($Property)
@@ -104,4 +75,4 @@ for ($i=0; $i -le $testOccurency; $i++)
 	# TimeTfsQuery $tfsBuildNumber $null "All"
 	TimeTfsQuery $tfsBuildNumber "*" "None"
 	# TimeTfsQuery $tfsBuildNumber "*" "All"
-}#>
+}
