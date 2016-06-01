@@ -1,74 +1,74 @@
-°Module-Tfs.psm1
+°Module-Tfs.psm1  
 
-.Synopsis
-functionnality to query team foundation servers builds
+.Synopsis  
+functionnality to query team foundation servers builds  
 
-.Description
-contain method that perform operation on TFS projects collection, get builds data, compilation, code analysis & test results.
+.Description  
+contain method that perform operation on TFS projects collection, get builds data, compilation, code analysis & test results.  
 
-.Notes 
-	fileName	: Module-TFS.psm1
-	version		: 0.033
-	author		: Armand Lacore
+.Notes   
+	fileName	: Module-TFS.psm1  
+	version		: 0.033  
+	author		: Armand Lacore  
 
-°TFS 
+°TFS   
 
-Get-TfsBuildDetails
-Get-TfsBuilds 
-Get-TfsCodeAnalysisInfo
-Get-TfsCodeCoveragesInfo
-Get-TfsCompilationInfo
-Get-TfsConnection
-Get-TfsEnvironment
-Get-TfsLastExecutedBuildDetails
-Get-TfsUnitTestsInfo
+Get-TfsBuildDetails  
+Get-TfsBuilds   
+Get-TfsCodeAnalysisInfo  
+Get-TfsCodeCoveragesInfo  
+Get-TfsCompilationInfo  
+Get-TfsConnection  
+Get-TfsEnvironment  
+Get-TfsLastExecutedBuildDetails  
+Get-TfsUnitTestsInfo  
+ 
+°Module-IO.psm1  
 
-°Module-IO.psm1
+.Synopsis  
+Input & Output helper  
 
-.Synopsis
-Input & Output helper
+.Description  
+contain IO fonctionnality : log, xml, IO.  
 
-.Description
-contain IO fonctionnality : log, xml, IO.
+.Notes  
+	fileName	: Module-IO.psm1  
+	version		: 0.52  
+	author		: Armand Lacore  
 
-.Notes
-	fileName	: Module-IO.psm1
-	version		: 0.52
-	author		: Armand Lacore
+°LOGGIN  
 
-°LOGGIN
+Add-ToEachLine  
+Format-Message  
+Set-UISize  
+Set-LogColor  
+Set-LogLevel  
+Write-LogDebug  
+Write-LogError  
+Write-LogEvent  
+Write-LogHost  
+Write-LogObject  
+Write-LogVerbose  
+Write-LogWarning  
+Write-ObjectToHtml  
+Write-ObjectToXml  
 
-Add-ToEachLine
-Format-Message
-Set-UISize
-Set-LogColor
-Set-LogLevel
-Write-LogDebug
-Write-LogError
-Write-LogEvent
-Write-LogHost
-Write-LogObject
-Write-LogVerbose
-Write-LogWarning
-Write-ObjectToHtml
-Write-ObjectToXml
+°XML  
 
-°XML
+Get-Data  
+Get-XPathValue  
+Set-XPathValue  
+Test-XPath  
 
-Get-Data
-Get-XPathValue
-Set-XPathValue
-Test-XPath
+°IO   
 
-°IO 
-
-Add-Assemblies
-Add-Modules
-Assert-Folders
-Get-InString
-Get-Prompt
-Get-SecureString
-Get-SHA256
-Get-TempFolder
-Remove-Folder
-Set-SecureString
+Add-Assemblies  
+Add-Modules  
+Assert-Folders  
+Get-InString  
+Get-Prompt  
+Get-SecureString  
+Get-SHA256  
+Get-TempFolder  
+Remove-Folder  
+Set-SecureString  
