@@ -12,7 +12,7 @@ timed examples on QueryBuilds methods from definition specs, see https://msdn.mi
 #>
 
 # script parameters
-$testOccurency = 2
+$testOccurency = 3
 
 # tfs parameters
 $tfsCollectionUri = "https://tfs.axacolor.igo6.com/tfs/DefaultCollection"

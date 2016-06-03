@@ -16,7 +16,7 @@ contain method that perform operation on TFS projects collection, get builds dat
 # import Input\Output module : helper for logging, $global variables, IO and xml (IO module is meant be stored on the same folder than this module : Root\Modules)
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
-# import TFS assemblies (Add-Assemblies come from Module-IO, it add Microsoft.$_.dll and ask for LoaderException on error loading)
+# import TFS assemblies (Add-Assemblies come from Module-IO, it add Microsoft.$_.dll and load file from Root\Assemblies folder, LoaderException are logged)
 Add-Assemblies @("TeamFoundation.Client","TeamFoundation.Build.Client","TeamFoundation.TestManagement.Client","TeamFoundation.WorkItemTracking.Client","VisualStudio.Services.Client","TeamFoundation.WorkItemTracking.Client.DataStoreLoader","TeamFoundation.Build.Common")
 
 #endregion
@@ -64,7 +64,7 @@ Function Get-TfsBuildDetails
 
     try
     {
-        Write-LogHost "getting build details from $tfsBuildNumber" -LineBefore
+        Write-LogHost "getting build details for $tfsBuildNumber" -LineBefore
 
         $tfsBuildName = $tfsBuildNumber -replace '^(.*)_(\d{8}?)\.(\d*)$', '$1'
 
@@ -73,8 +73,8 @@ Function Get-TfsBuildDetails
 		if ($tfsBuilds)
 		{
 			$tfsBuild = $tfsBuilds.Builds | Select-Object -First 1
-			$tfsBuild | Add-Member -NotePropertyName Tfs -NotePropertyValue $($tfsBuilds.Tfs)
 
+			$tfsBuild | Add-Member -NotePropertyName Tfs -NotePropertyValue $($tfsBuilds.Tfs)
 			$tfsBuild | Add-Member -NotePropertyName BuildDuration -NotePropertyValue $($tfsBuild.FinishTime - $tfsBuild.StartTime)
 
 			# get compilation and code analysis errors and warnings
@@ -123,7 +123,8 @@ Function Get-TfsBuildDetails
 
 			# get unit tests info
 			Write-LogVerbose "getting build unit tests results"
-			$unitTests = $tfsBuild.Tfs.TestManagementService.TestRuns.ByBuild($tfsBuild.Uri)
+			$managementService =  $tfsBuild.Tfs.TestManagementService.GetTeamProject($TfsProjectName)
+			$unitTests = $managementService.TestRuns.ByBuild($tfsBuild.Uri)
 
 			$testAreSuccessFull = $true
 			foreach ($testsSet in $tfsBuild.UnitTest)
@@ -134,7 +135,7 @@ Function Get-TfsBuildDetails
 			$tfsBuild | Add-Member -NotePropertyName UnitTests -NotePropertyValue $unitTests
 
 			Write-LogVerbose "getting build code coverage"
-			$codeCoverages = $tfsBuild.Tfs.TestManagementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
+			$codeCoverages = $managementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
 			
 			$tfsBuild | Add-Member -NotePropertyName CodeCoverages -NotePropertyValue $($codeCoverages)
 
@@ -194,13 +195,13 @@ minimum finish time filter, default = 0 (01/01/0001 00:00:00)
 maximum finish time filter, default = 0 (01/01/0001 00:00:00)
 
 .Parameter QueryOptions
-options that are used to control the amount of data returned, default = All, available : None, Definitions, Agents, Workspaces, Controllers, Process, BatchedRequests, HistoricalBuilds, All
+options that are used to control the amount of data returned : None, Definitions, Agents, Workspaces, Controllers, Process, BatchedRequests, HistoricalBuilds, All, default = All
 
 .Parameter QueryOrder
-desired order of the builds returned, default = StartTimeAscending, available : StartTimeAscending, StartTimeDescending, FinishTimeAscending, FinishTimeDescending
+desired order of the builds returned : StartTimeAscending, StartTimeDescending, FinishTimeAscending, FinishTimeDescending, default = StartTimeAscending
 
 .Parameter Status
-build status filter, default = All, available : None, InProgress, Succeeded, PartiallySucceeded, Failed, Stopped, NotStarted, All
+build status filter : None, InProgress, Succeeded, PartiallySucceeded, Failed, Stopped, NotStarted, All, default = All
 
 .Example
 Get-TfsBuilds "https://tfs.myProjectsColUri.com/DefaultCollection" "myProj" "CI-myProject-Main"
@@ -305,7 +306,7 @@ Function Get-TfsCodeAnalysisInfo
     {
         Write-LogHost "getting code analysis info from $($TfsBuild.BuildNumber)"
 
-        # get code analysis rules code mapping containing translation
+        # get code analysis rules code mapping containing translation (Get-Data come from Module-IO it add .xml to the file name and load it from Root\Data folder)
         $codeAnalysisRules = (Get-Data "CodeAnalysis").CodeAnalysisRules.CodeAnalysisRule
 
 		# initialize returned object
@@ -450,17 +451,13 @@ Ordered dictionnary collection containing build compilation warning and errors m
 Function Get-TfsCompilationInfo
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][object]$TfsBuild,
-			[Parameter(Mandatory=$false,Position=1)][string]$Language="English")
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$TfsBuild)
 
     Write-LogDebug "Start Get-TfsCompilationInfo"
 
     try
     {
         Write-LogHost "getting compilation info from $($TfsBuild.BuildNumber)"
-
-        # Load configuration
-        $buildInfoData = Get-Data "BuildInfos"
 
 		# initialize returned object
 		$compilationInfo = New-Object -TypeName PsObject
@@ -634,6 +631,9 @@ TFS project name as string
 .Parameter TfsBuildName
 Name of the build to return
 
+.Parameter BuildStatusExclusion
+Array containing build status to exclude, from : InProgress, Succeeded, PartiallySucceeded, Failed, Stopped, NotStarted, default = @("InProgress","NotStarted","Stopped")
+
 .Parameter Language
 Language used in code analysis items descriptions (only used in FullDetails mode)
 
@@ -644,22 +644,23 @@ Switch, set to true if you wan't to compile info from build errors, build warnin
 Switch, set to true if you known last build is less than 24h age, to speed up build search process
 
 .Example
-Get-TfsLastExecutedBuildDetails "https://tfs.myProjectsColUri.com/DefaultCollection" "myProj" "CI-myProject-Main"
+Get-TfsLastBuildDetails "https://tfs.myProjectsColUri.com/DefaultCollection" "myProj" "CI-myProject-Main"
 
 .Outputs
 PSObject containing TFS build details on success / null object on fail
 #> 
-Function Get-TfsLastExecutedBuildDetails
+Function Get-TfsLastBuildDetails
 {
     [CmdletBinding()]
     Param (	[Parameter(Mandatory=$true,Position=0)][string]$TfsCollectionUri,
 			[Parameter(Mandatory=$true,Position=1)][string]$TfsProjectName,
 			[Parameter(Mandatory=$true,Position=2)][string]$TfsBuildName,
-			[Parameter(Mandatory=$false,Position=3)][Validateset("English","French","Spanish")][string]$Language="English",
-			[Parameter(Mandatory=$false,Position=4)][switch]$FullDetails,
-			[Parameter(Mandatory=$false,Position=5)][switch]$RecentBuild )
+			[Parameter(Mandatory=$false,Position=3)][Validateset("InProgress","Succeeded","PartiallySucceeded","Failed","Stopped","NotStarted")][array]$BuildStatusExclusion=@("InProgress","NotStarted","Stopped"),
+			[Parameter(Mandatory=$false,Position=4)][Validateset("English","French","Spanish")][string]$Language="English",
+			[Parameter(Mandatory=$false,Position=5)][switch]$FullDetails,
+			[Parameter(Mandatory=$false,Position=6)][switch]$RecentBuild )
 
-    Write-LogDebug "Start Get-TfsLastExecutedBuildDetails"
+    Write-LogDebug "Start Get-TfsLastBuildDetails"
 
     try
     {
@@ -673,12 +674,12 @@ Function Get-TfsLastExecutedBuildDetails
 			$tfsBuilds = Get-TfsBuilds $TfsCollectionUri $TfsProjectName $TfsBuildName -QueryOrder "StartTimeDescending"
 		}
 
-        $tfsLastBuildNumber = ($tfsBuilds.Builds | ? { $_.Status -ne "InProgress" } | Select-Object -First 1).BuildNumber
+        $tfsLastBuildNumber = ($tfsBuilds.Builds | ? { $_.Status -notin $BuildStatusExclusion } | Select-Object -First 1).BuildNumber
 
         $tfsBuildDetails = Get-TfsBuildDetails $TfsCollectionUri $TfsProjectName $tfsLastBuildNumber $Language $FullDetails
 
 	    # trace Successs
-	    Write-LogDebug "Success Get-TfsLastExecutedBuildDetails"
+	    Write-LogDebug "Success Get-TfsLastBuildDetails"
     }
     catch
     {

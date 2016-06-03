@@ -1,9 +1,9 @@
-<# 
+﻿<# 
 .Synopsis
-Generate html builds report and send it through email 
+Generate build report and send it by email
 
 .Description
-Generate html builds report containing Compilation, Code Analysis, Unit Tests and code coverage informations, and send it through email getting data from BuildInfos.xml
+Generate html builds report containing compilation, code analysis, unit tests and code coverage informations, and send it through email
 
 .Parameter Language
 Language used in code analysis short description (long description language depends on your tfs server settings)
@@ -14,27 +14,23 @@ enable Host, Verbose, Debug or Trace log level
 .Example
 Send-BuildInfos
 
-.Example
-Send-BuildInfos "French"
-
-.Example
-Send-BuildInfos -LogLevel "Debug"
-
 .Notes  
     fileName	: Send-BuildInfos.ps1
-    version		: 0.019
+    version		: 0.026
     author		: Armand Lacore
 #>
+
+#region <SCRIPT PARAMETERS> 
 
 [CmdletBinding()] # enable -ErrorAction parameter
 Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French","Spanish")][string]$Language="English",
   		[Parameter(Mandatory=$false,Position=1)][Validateset("Host","Verbose","Debug","Trace")][string]$LogLevel="Verbose" )
-
-# import IO and TFS modules
+  
+# import kit modules
 $modulesShortName = @("IO", "Tfs")
-$modulesShortName | if (!(Get-Module -Name "Module-$($_)")) { Import-Module ([IO.Path]::Combine($global:ModulesFolder, "Module-$($_).psm1")) -Force -Global }
+$modulesShortName | % { if (!(Get-Module -Name "Module-$_")) { Import-Module ([IO.Path]::Combine($PSScriptRoot, "Modules", "Module-$_.psm1")) -Force -Global } }
 
-# define verbose log level and create or clean temp folder Root\TempYYYYMMddHHmmssfff (functions from Module-IO)
+# define verbose log level and create or clean temp folder (functions from Module-IO)
 Set-LogLevel $LogLevel
 $tempFolder = Get-TempFolder
 		
@@ -43,22 +39,20 @@ try
 	Write-LogDebug "Start Script Send-BuildInfos.ps1"
 
 	Write-LogVerbose "Loading TFS configuration"
-
-    # Load configuration from BuildInfos.xml
-	$buildInfosData = [xml](Get-Content ([IO.Path]::Combine($gobal:DataFolder, "BuildInfos.xml")) -Encoding UTF8)
-    $tfsCollectionUri = [string]$buildInfosData.BuildReports.Tfs.CollectionUri
-    $tfsProjectName = [string]$buildInfosData.BuildReports.Tfs.ProjectName
-	$tfsBuilds = $buildInfosData.BuildReports.Build
-
-	# get tfs credentials if they exists (if not TFS will try to authenticate through active directory) 
-	$tfsCredentialsPath = [IO.Path]::Combine($gobal:DataFolder, "tfs@$($env:username)@$($env:computername).clixml")
-	if (Test-Path $tfsCredentialsPath) { $tfsCredentials = Import-Clixml $tfsCredentialsPath } else { $tfsCredentials = $null }
-
+	
+    # load BuildInfos.xml from Data folder (functions from Module-IO)
+    $buildInfoData = Get-Data "BuildInfos"
+	
+	# get tfs projects collections informations from BuildInfos.xml
+    $tfsCollectionUri = [string]$buildInfoData.BuildReports.Tfs.CollectionUri
+    $tfsProjectName = [string]$buildInfoData.BuildReports.Tfs.ProjectName
+	$tfsBuilds = $buildInfoData.BuildReports.Build
+		
 	Write-LogVerbose "Getting HTML template"
 
-	# get and format html template
-	$htmlCss = [string]$buildInfosData.BuildReports.Html.Css
-	$htmlTemplate = [string]$buildInfosData.BuildReports.Html.Template
+	# get and format html template from BuildInfos.xml
+	$htmlCss = [string]$buildInfoData.BuildReports.Html.Css
+	$htmlTemplate = [string]$buildInfoData.BuildReports.Html.Template
 		# remove indentation inherited from xml template dirty temp todo check css template
 	$htmlCss = $htmlCss -replace "`t`t`t", ""
 	$htmlTemplate = $htmlTemplate -replace "`t`t`t", ""
@@ -73,37 +67,46 @@ try
 
 		Write-LogHost "Querying $tfsBuildName"
 		
-		# get quality indicator treshold
+		# get quality indicator treshold from BuildInfos.xml
 		$codeAnalysisWarningsThreshold = [int]$tfsBuild.CodeAnalysisThreshold
 		$codeCoverageWarningsThreshold = [int]$tfsBuild.CodeCoverageThreshold
         $compilationWarningsThreshold = [int]$tfsBuild.CompilationThreshold
 
-		# get build data, tfsCredentials accept $null value, remove -RecentBuild switch if last build can be older than Yesterday (slow up processing)
-        $build = Get-TfsLastExecutedBuildDetails $tfsCollectionUri $tfsProjectName $tfsBuildName $tfsCredentials $Language -FullDetails -RecentBuild
+		# get build data (long time operation)
+		$buildstatusExclusion = @("InProgress","NotStarted","Stopped")
+        $build = Get-TfsLastBuildDetails $tfsCollectionUri $tfsProjectName $tfsBuildName $buildstatusExclusion $Language -FullDetails -RecentBuild
 
 		Write-LogVerbose "Formating data from build $($build.BuildNumber)"
 
 		# format build summary
 		$buildDuration = "$([Math]::Round($($build.BuildDuration.TotalMinutes),2)) minuts"
+		
 		$codeAnalysisWarningsCount = [int]($build.CodeAnalysisInfo.Details | ? { $_.ErrorLevel -eq "Warning" }).Count
 		$compilationWarningsCount = [int]($build.CompilationInfo.Details | ? { $_.ErrorLevel -eq "Warning" }).Count
+		
 		$testTotalCount = [int]($build.UnitTestsInfo.Details).Count
 		$testCompletedCount = [int]($build.UnitTestsInfo.Details | ? { $_.Outcome -eq "Passed" }).Count
 		$codeCoverage = [int]$build.CodeCoveragesInfo.Summary.Coverage
+		
         if ($testTotalCount -gt 0) { $testCompletedPercentage = [Math]::Round(100 - (100 * ($testTotalCount - $testCompletedCount) / $testTotalCount),2) }
         else { $testCompletedPercentage = 0 }
 
         # format monitored values into red or green div depending on treshold values
         if ($build.CompilationSucceed -eq "True") { $compilationSucceed = "<div class=`"green`">$($build.CompilationSucceed)</div>" }
         else { $compilationSucceed = "<div class=`"red`">$($build.CompilationSucceed)</div>" }
+		
         if ($build.CodeAnalysisSucceed -eq "True") { $codeAnalysisSucceed = "<div class=`"green`">$($build.CodeAnalysisSucceed)</div>" }
         else { $codeAnalysisSucceed = "<div class=`"red`">$($build.CodeAnalysisSucceed)</div>" }
+		
         if ($testCompletedPercentage -eq 100) { $testCompletedPercentage = "<div class=`"green`">$testCompletedPercentage %</div>" } 
 		else {  $testCompletedPercentage = "<div class=`"red`">$testCompletedPercentage %</div>" }
+		
         if ($codeCoverage -ge $codeCoverageWarningsThreshold) { $codeCoverage = "<div class=`"green`">$codeCoverage %</div>" }
         else { $codeCoverage = "<div class=`"red`">$codeCoverage %</div>" }
+		
         if ($compilationWarningsCount -le $compilationWarningsThreshold) { $compilationWarningsCount = "<div class=`"green`">$compilationWarningsCount</div>" }
         else { $compilationWarningsCount = "<div class=`"red`">$compilationWarningsCount</div>" }
+		
         if ($codeAnalysisWarningsCount -le $codeAnalysisWarningsThreshold) { $codeAnalysisWarningsCount = "<div class=`"green`">$codeAnalysisWarningsCount</div>" }
         else { $codeAnalysisWarningsCount = "<div class=`"red`">$codeAnalysisWarningsCount</div>" }
 	    
@@ -111,21 +114,37 @@ try
         $buildSummary = [ordered]@{"Build name"=$($build.BuildNumber);"Status"=$($build.Status);"Date"=$($build.StartTime);"Duration"=$buildDuration;"Compilation succeed"=$compilationSucceed;"Code analysis succeed"=$codeAnalysisSucceed;"Test passed"=$testCompletedPercentage;"Code coverage"=$codeCoverage;"Compilation warnings"=$compilationWarningsCount;"Code analysis warnings"=$codeAnalysisWarningsCount }
         $buildSummaryHtml = Write-ObjectToHtml $buildSummary -TableClass "Summary" -TableId "bSummary" -Horizontal
 
-		# get html tables from build data
+		# get html tables from build data (debug loggin is there to mesure time performance)
+        Write-LogDebug "code analysis summary"
 		$codeAnalysisSummaryHtml = Write-ObjectToHtml $build.CodeAnalysisInfo.Summary -TableClass "Details" -TableId "caSummary"
-		$codeAnalysisDetailsHtml = Write-ObjectToHtml $build.CodeAnalysisInfo.Details -TableClass "Details" -TableId "caDetails" -EncodeHtml
-		$compilationDetailsHtml = Write-ObjectToHtml $build.CompilationInfo.Details -TableClass "Details" -TableId "compDetails" -EncodeHtml
-		$unitTestSummaryHtml = Write-ObjectToHtml $build.UnitTestsInfo.Summary -TableClass "Summary" -TableId "utSum" -Horizontal
-		$unitTestDetailsHtml = Write-ObjectToHtml $build.UnitTestsInfo.Details -TableClass "Details" -TableId "utDetails" -EncodeHtml
-		$codeCoverageSummaryHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
-		$codeCoverageDetailsHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Details -TableClass "Details" -TableId "ccDetails" -EncodeHtml
-        
+		
+        Write-LogDebug "code analysis détails"		
+        $codeAnalysisDetailsHtml = Write-ObjectToHtml $build.CodeAnalysisInfo.Details -TableClass "Details" -TableId "caDetails" -EncodeHtml
+		
+        Write-LogDebug "compilation details"		
+        $compilationDetailsHtml = Write-ObjectToHtml $build.CompilationInfo.Details -TableClass "Details" -TableId "compDetails" -EncodeHtml
+		
+        Write-LogDebug "unit test summary"		
+        $unitTestSummaryHtml = Write-ObjectToHtml $build.UnitTestsInfo.Summary -TableClass "Summary" -TableId "utSum" -Horizontal
+		
+        Write-LogDebug "unit test details"		
+        $unitTestDetailsHtml = Write-ObjectToHtml $build.UnitTestsInfo.Details -TableClass "Details" -TableId "utDetails" -EncodeHtml
+		
+        Write-LogDebug "code coverage summary"		
+        $codeCoverageSummaryHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
+		
+        Write-LogDebug "code coverage details"		
+        $codeCoverageDetailsHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Details -TableClass "Details" -TableId "ccDetails" -EncodeHtml
+		
+        Write-LogDebug "html tables created"
+
 		Write-LogVerbose "Creating email body"
 
         # build mail body
         $mailHtml = "<div class=`"mail`">`r`n"
         $mailHtml += "`t<h3 class=`"tableHeader`">Build summary</h3>`r`n"
         $mailHtml += "$(Add-ToEachLine $buildSummaryHtml "`t")"
+		
         if (!$build.CompilationSucceed)
         {
             $compilationErrorFormated = @()
@@ -141,6 +160,7 @@ try
                 $mailHtml += "</div>`r`n"
             }
         }
+		
         if (!$build.CodeAnalysisSucceed)
         {
             $codeAnalysisErrorFormated = @()
@@ -156,21 +176,25 @@ try
                 $mailHtml += "</div>`r`n"
             }
         }
+		
         if ($codeAnalysisSummaryHtml)
         {
             $mailHtml += "`t<h3 class=`"tableHeader`">Code analysis</h3>`r`n"
             $mailHtml += "$(Add-ToEachLine $codeAnalysisSummaryHtml "`t")"
         }
+		
         if ($unitTestSummaryHtml)
         {
             $mailHtml += "`t<h3 class=`"tableHeader`">Unit Tests</h3>`r`n"
             $mailHtml += "$(Add-ToEachLine $unitTestSummaryHtml "`t")"
         }
+		
         if ($codeCoverageSummaryHtml)
         {
             $mailHtml += "`t<h3 class=`"tableHeader`">Code coverage</h3>`r`n"
             $mailHtml += "$(Add-ToEachLine $codeCoverageSummaryHtml "`t")"
         }
+		
         $mailHtml += "</div>"
         # add a 2 tab indentation to mail body before inserting into Html template
         $mailHtml = Add-ToEachLine $mailHtml "`t`t"
@@ -178,34 +202,40 @@ try
         $mailHtml = $htmlTemplate -replace '\(\$Title\)', "build report" -replace '\(\$Body\)', "`t`t$($mailHtml.Trim())"
 
 		Write-LogVerbose "Creating email attachments files"
-        
+
+		$htmlTemplate = ($htmlTemplate -replace '\(\$CSS\)', "`t`t`t$($htmlCss.Trim())").Trim()
+
 		# build attachments files        
         $attachments = @()
+		
         if ($compilationDetailsHtml)
         {
             $htmlPage = $htmlTemplate -replace '\(\$Title\)',"Compilation"
-		    $htmlPage = $htmlPage -replace '\(\$Body\)', $(Add-ToEachLine $compilationDetailsHtml "`t`t").Trim()
+		    $htmlPage = $htmlPage -replace '\(\$Body\)', "`t`t$(Add-ToEachLine $compilationDetailsHtml "`t`t").Trim())"
 		    $htmlPage | Out-File "$tempFolder\Compilation.Html"
             $attachments += "$tempFolder\Compilation.Html"
         }
+		
         if ($unitTestDetailsHtml)
         {
             $htmlPage = $htmlTemplate -replace '\(\$Title\)',"UnitTests"
-		    $htmlPage = $htmlPage -replace '\(\$Body\)', $(Add-ToEachLine $unitTestDetailsHtml "`t`t").Trim()
+		    $htmlPage = $htmlPage -replace '\(\$Body\)', "`t`t$(Add-ToEachLine $unitTestDetailsHtml "`t`t").Trim())"
 		    $htmlPage | Out-File "$tempFolder\UnitTests.Html"
             $attachments += "$tempFolder\UnitTests.Html"
         }
+		
         if ($codeAnalysisDetailsHtml)
         {
             $htmlPage = $htmlTemplate -replace '\(\$Title\)',"CodeAnalysis"
-		    $htmlPage = $htmlPage -replace '\(\$Body\)', $(Add-ToEachLine $codeAnalysisDetailsHtml "`t`t").Trim()
+		    $htmlPage = $htmlPage -replace '\(\$Body\)', "`t`t$(Add-ToEachLine $codeAnalysisDetailsHtml "`t`t").Trim())"
 		    $htmlPage | Out-File "$tempFolder\CodeAnalysis.Html"
             $attachments += "$tempFolder\CodeAnalysis.Html"
         }
+		
         if ($codeCoverageDetailsHtml)
         {
             $htmlPage = $htmlTemplate -replace '\(\$Title\)',"CodeCoverage"
-		    $htmlPage = $htmlPage -replace '\(\$Body\)', $(Add-ToEachLine $codeCoverageDetailsHtml "`t`t").Trim()
+		    $htmlPage = $htmlPage -replace '\(\$Body\)', "`t`t$(Add-ToEachLine $codeCoverageDetailsHtml "`t`t").Trim())"
 		    $htmlPage | Out-File "$tempFolder\CodeCoverage.Html"
             $attachments += "$tempFolder\CodeCoverage.Html"
         }
@@ -213,7 +243,7 @@ try
 		Write-LogVerbose "Getting email configuration"
 
 		# get email credentials
-        $emailCredentialsPath = [IO.Path]::Combine($global:DataFolder, "Credentials", "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
+        $emailCredentialsPath = [IO.Path]::Combine($global:DataFolder, "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
 		if (Test-Path $emailCredentialsPath) { $emailCredentials = Import-Clixml $emailCredentialsPath }
 		else { Throw "credentials missing, email won't be send" }
         
@@ -228,7 +258,7 @@ try
         {
 			# create mail and server objects
             $message = New-Object -TypeName System.Net.Mail.MailMessage
-            $smtp = New-Object -TypeName System.Net.Mail.SmtpClient($buildInfosData.BuildReports.Mail.Server)
+            $smtp = New-Object -TypeName System.Net.Mail.SmtpClient($buildInfoData.BuildReports.Mail.Server)
 
 			# build message
             $recipients | % { $message.To.Add($_) }
@@ -239,10 +269,10 @@ try
 			$attachments | % { $message.Attachments.Add($(New-Object System.Net.Mail.Attachment $_)) }
 			
 			# build SMTP server
-            $smtp = New-Object -TypeName System.Net.Mail.SmtpClient([string]$buildInfosData.BuildReports.Mail.Server)
-            $smtp.Port = [int]$buildInfosData.BuildReports.Mail.Port
+            $smtp = New-Object -TypeName System.Net.Mail.SmtpClient([string]$buildInfoData.BuildReports.Mail.Server)
+            $smtp.Port = [int]$buildInfoData.BuildReports.Mail.Port
             $smtp.Credentials = [System.Net.ICredentialsByHost]$emailCredentials
-            $smtp.EnableSsl = [bool]$buildInfosData.BuildReports.Mail.UseSsl
+            $smtp.EnableSsl = [bool]$buildInfoData.BuildReports.Mail.UseSsl
 
 			# send message
             $smtp.Send($message)
@@ -265,10 +295,11 @@ try
 }
 catch
 {
+    # log Error 
     Write-LogError $($_.Exception) $($_.InvocationInfo)
 }
 finally
 {
-	# remove temp folder
-	Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction Continue 
+	Remove-Folder $tempFolder
 }
+ 
