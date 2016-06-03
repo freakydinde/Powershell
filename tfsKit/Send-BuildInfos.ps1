@@ -86,7 +86,7 @@ try
 		
 		$testTotalCount = [int]($build.UnitTestsInfo.Details).Count
 		$testCompletedCount = [int]($build.UnitTestsInfo.Details | ? { $_.Outcome -eq "Passed" }).Count
-		$codeCoverage = [int]$build.CodeCoveragesInfo.Summary.Coverage
+		$codeCoverage = [int]$build.CodeCoverageInfo.Summary.Coverage
 		
         if ($testTotalCount -gt 0) { $testCompletedPercentage = [Math]::Round(100 - (100 * ($testTotalCount - $testCompletedCount) / $testTotalCount),2) }
         else { $testCompletedPercentage = 0 }
@@ -131,10 +131,10 @@ try
         $unitTestDetailsHtml = Write-ObjectToHtml $build.UnitTestsInfo.Details -TableClass "Details" -TableId "utDetails" -EncodeHtml
 		
         Write-LogDebug "code coverage summary"		
-        $codeCoverageSummaryHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
+        $CodeCoverageummaryHtml = Write-ObjectToHtml $build.CodeCoverageInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
 		
         Write-LogDebug "code coverage details"		
-        $codeCoverageDetailsHtml = Write-ObjectToHtml $build.CodeCoveragesInfo.Details -TableClass "Details" -TableId "ccDetails" -EncodeHtml
+        $codeCoverageDetailsHtml = Write-ObjectToHtml $build.CodeCoverageInfo.Details -TableClass "Details" -TableId "ccDetails" -EncodeHtml
 		
         Write-LogDebug "html tables created"
 
@@ -189,10 +189,10 @@ try
             $mailHtml += "$(Add-ToEachLine $unitTestSummaryHtml "`t")"
         }
 		
-        if ($codeCoverageSummaryHtml)
+        if ($CodeCoverageummaryHtml)
         {
             $mailHtml += "`t<h3 class=`"tableHeader`">Code coverage</h3>`r`n"
-            $mailHtml += "$(Add-ToEachLine $codeCoverageSummaryHtml "`t")"
+            $mailHtml += "$(Add-ToEachLine $CodeCoverageummaryHtml "`t")"
         }
 		
         $mailHtml += "</div>"

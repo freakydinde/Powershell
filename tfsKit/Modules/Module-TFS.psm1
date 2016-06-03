@@ -25,7 +25,7 @@ Add-Assemblies @("TeamFoundation.Client","TeamFoundation.Build.Client","TeamFoun
 
 <# 
 .Synopsis
-get TFS builds informations
+get TFS build informations
 
 .Description
 get build details (build errors, build warnings, UnitTest and code coverage results) from projets collection URI, project name and build number
@@ -89,6 +89,7 @@ Function Get-TfsBuildDetails
 
 			# get compilation info
 			Write-LogVerbose "getting build compilation results"
+			
 			$compilation = @()
 			foreach ($compilationMessage in $compilationErrors)
 			{
@@ -100,12 +101,15 @@ Function Get-TfsBuildDetails
 				$compilationMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
 				$compilation += $compilationMessage
 			}
+			
 			$compilationIsSuccessFull = $(($compilation | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
+			
 			$tfsBuild | Add-Member -NotePropertyName CompilationSucceed -NotePropertyValue $compilationIsSuccessFull
 			$tfsBuild | Add-Member -NotePropertyName Compilation -NotePropertyValue $compilation
 
 			# get code analysis info
 			Write-LogVerbose "getting build code analysis results"
+			
 			$codeAnalysis = @()
 			foreach ($codeAnalysisMessage in $codeAnalysisErrors)
 			{
@@ -117,12 +121,15 @@ Function Get-TfsBuildDetails
 				$codeAnalysisMessage | Add-Member -NotePropertyName ErrorLevel -NotePropertyValue "Warning"
 				$codeAnalysis += $codeAnalysisMessage
 			}    
+			
 			$codeAnalysisIsSuccessFull = $(($codeAnalysis | ? { $_.ErrorLevel -eq "Error" }).Count -le 0)
+			
 			$tfsBuild | Add-Member -NotePropertyName CodeAnalysisSucceed -NotePropertyValue $codeAnalysisIsSuccessFull
 			$tfsBuild | Add-Member -NotePropertyName CodeAnalysis -NotePropertyValue $codeAnalysis
 
 			# get unit tests info
 			Write-LogVerbose "getting build unit tests results"
+			
 			$managementService =  $tfsBuild.Tfs.TestManagementService.GetTeamProject($TfsProjectName)
 			$unitTests = $managementService.TestRuns.ByBuild($tfsBuild.Uri)
 
@@ -131,20 +138,23 @@ Function Get-TfsBuildDetails
 			{
 				if ([int]($testsSet.Statistics.FailedTests) -gt 0) { $testAreSuccessFull = $false }
 			}
+			
 			$tfsBuild | Add-Member -NotePropertyName UnitTestsSucceed -NotePropertyValue $testAreSuccessFull
 			$tfsBuild | Add-Member -NotePropertyName UnitTests -NotePropertyValue $unitTests
 
+			# get code coverage info
 			Write-LogVerbose "getting build code coverage"
-			$codeCoverages = $managementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
 			
-			$tfsBuild | Add-Member -NotePropertyName CodeCoverages -NotePropertyValue $($codeCoverages)
+			$codeCoverage = $managementService.CoverageAnalysisManager.QueryBuildCoverage($tfsBuild.Uri,[Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::BlockData -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Functions -bor [Microsoft.TeamFoundation.TestManagement.Client.CoverageQueryFlags]::Modules)
+			
+			$tfsBuild | Add-Member -NotePropertyName CodeCoverage -NotePropertyValue $codeCoverage
 
 			if ($FullDetails)
 			{
 				$tfsBuild | Add-Member -NotePropertyName CompilationInfo -NotePropertyValue $(Get-TfsCompilationInfo $tfsBuild)
 				$tfsBuild | Add-Member -NotePropertyName CodeAnalysisInfo -NotePropertyValue $(Get-TfsCodeAnalysisInfo $tfsBuild -Language $Language)
 				$tfsBuild | Add-Member -NotePropertyName UnitTestsInfo -NotePropertyValue $(Get-TfsUnitTestsInfo $tfsBuild)
-				$tfsBuild | Add-Member -NotePropertyName CodeCoveragesInfo -NotePropertyValue $(Get-TfsCodeCoveragesInfo $tfsBuild)
+				$tfsBuild | Add-Member -NotePropertyName CodeCoverageInfo -NotePropertyValue $(Get-TfsCodeCoverageInfo $tfsBuild)
 			}
 		}
 		else
@@ -359,17 +369,17 @@ return an array containing code coverage details in a readable format
 TFS build containing detailled build data
 
 .Example
-Get-TfsCodeCoveragesInfo $tfsBuild
+Get-TfsCodeCoverageInfo $tfsBuild
 
 .Outputs
 Ordered dictionnary collection containing code coverage details on success / null object on fail
 #> 
-Function Get-TfsCodeCoveragesInfo
+Function Get-TfsCodeCoverageInfo
 {
     [CmdletBinding()]
     Param (	[Parameter(Mandatory=$true,Position=0)][object]$TfsBuild )
 
-    Write-LogDebug "Start Get-TfsCodeCoveragesInfo"
+    Write-LogDebug "Start Get-TfsCodeCoverageInfo"
 
     try
     {
@@ -378,10 +388,10 @@ Function Get-TfsCodeCoveragesInfo
 		# initialize returned object
 		$returnArray = @()
 
-		foreach ($codeCoverage in $TfsBuild.CodeCoverages)
+		foreach ($codeCoverage in $TfsBuild.CodeCoverage)
 		{
-			$codeCoveragesArray = New-Object -TypeName PsObject
-			$codeCoveragesArray | Add-Member -NotePropertyName ID -NotePropertyValue $codeCoverage.Configuration.Id
+			$codeCoverageArray = New-Object -TypeName PsObject
+			$codeCoverageArray | Add-Member -NotePropertyName ID -NotePropertyValue $codeCoverage.Configuration.Id
 
 			$modules = @()
 			foreach ($module in $codeCoverage.Modules)
@@ -412,14 +422,14 @@ Function Get-TfsCodeCoveragesInfo
 
 			$statistics = [ordered]@{BlocksCovered=$blocksCovered;BlocksNotCovered=$blocksNotCovered;TotalBlocks=$totalBlocks;LinesCovered=$linesCovered;LinesNotCovered=$linesNotCovered;LinesPartiallyCovered=$linesPartiallyCovered;TotalLines=$totalLines;Coverage=$coverage}
 
-			$codeCoveragesArray | Add-Member -NotePropertyName Details -NotePropertyValue $modules
-			$codeCoveragesArray | Add-Member -NotePropertyName Summary -NotePropertyValue $statistics
+			$codeCoverageArray | Add-Member -NotePropertyName Details -NotePropertyValue $modules
+			$codeCoverageArray | Add-Member -NotePropertyName Summary -NotePropertyValue $statistics
 
-			$returnArray += $CodeCoveragesArray
+			$returnArray += $codeCoverageArray
 		}
 
 	    # trace Success
-	    Write-LogDebug "Success Get-TfsCodeCoveragesInfo"
+	    Write-LogDebug "Success Get-TfsCodeCoverageInfo"
     }
     catch
     {
