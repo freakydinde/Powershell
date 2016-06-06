@@ -203,6 +203,43 @@ Function Set-UISize
 
 <#
 .Synopsis
+Set powershell UI title
+ 
+.Description
+Set UI Title from $host.UI object
+
+.Parameter Title
+Title to set
+
+.Example
+Set-UITitle
+
+.Example
+Set-UITitle "my title"
+#>
+Function Set-UITitle
+{
+	[CmdletBinding()]
+	Param (	[Parameter(Mandatory=$true,Position=0)][string]$Title )
+
+	Write-LogDebug "Start Set-UITitle"
+	
+	try
+	{
+		$host.UI.RawUI.WindowTitle = $Title
+		
+		# trace Success
+		Write-LogDebug "Success Set-UITitle"
+	}
+	catch
+	{
+		# log Error
+		Write-LogError $($_.Exception) $($_.InvocationInfo)
+	}
+}
+
+<#
+.Synopsis
 Define host color
 
 .Description

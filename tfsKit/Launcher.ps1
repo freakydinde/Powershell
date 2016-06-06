@@ -25,6 +25,8 @@ Set-LogLevel "Verbose"
 # Set-LogColor, default = Error : Red, Warning : Yellow, Debug : DarkGray, Verbose : Gray, Progress : Green
 Set-LogColor
 
+Set-UITitle "tfsKit"
+
 # set PS current folder to rootFolder
 Set-Location $global:RootFolder
 

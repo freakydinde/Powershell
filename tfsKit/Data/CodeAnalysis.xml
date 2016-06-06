@@ -1,21 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeAnalysisRules version="0.29">
-	<CodeAnalysisRule ID="AF0001" DefaultLevel="Warning" English="Type name must not contain: AXA, EMEA, EU, Enum, New" French="Le nom du type ne doit pas contenir : AXA, EMEA, EU, Enum, New" />
-	<CodeAnalysisRule ID="AF0002" DefaultLevel="Warning" English="Type name prefix can not be m, e, i, c" French="Le prefix du nom du type ne peut pas être : m, e, i, c" />
-	<CodeAnalysisRule ID="AF0003" DefaultLevel="Warning" English="Namespace must begin with the assembly name" French="Le namespace doit commencer par le nom de l'assembly" />
-	<CodeAnalysisRule ID="AF0004" DefaultLevel="Warning" English="Incorrect class name according to its base class name" French="Nom de classe incorrect par apport au nom de sa base class" />
-	<CodeAnalysisRule ID="AF0005" DefaultLevel="Warning" English="Type name must begin with AF" French="Le nom du type doit commencer par AF" />
-	<CodeAnalysisRule ID="AF0006" DefaultLevel="Warning" English="Nested types should not be visible outside parent class" French="Les types imbriqués ne doivent pas être visible en dehors de la classe parent" />
-	<CodeAnalysisRule ID="AF0007" DefaultLevel="Warning" English="Ressource name must not contain: AXA, EMEA, EU, Enum, New" French="Le nom de la ressource ne doit pas contenir : AXA, EMEA, EU, Enum, New" />
-	<CodeAnalysisRule ID="AF0008" DefaultLevel="Warning" English="Function name must not contain: AXA, EMEA, EU, Enum, New" French="Le nom de la fonction ne doit pas contenir : AXA, EMEA, EU, Enum, New" />
-	<CodeAnalysisRule ID="AF0009" DefaultLevel="Warning" English="Avoid multiple method calls into a controller class" French="Évitez les multiples appels de méthode dans une classe Controller" />
-	<CodeAnalysisRule ID="AF0010" DefaultLevel="Warning" English="Do not write HTML ID in the body of a controller class method" French="Ne pas écrire du ID HTML dans le corps d'une méthode d'une classe Controller" />
-	<CodeAnalysisRule ID="AF0011" DefaultLevel="Warning" English="You can not call KSL methods" French="Vous ne pouvez pas appeler de methodes KSL" />
-	<CodeAnalysisRule ID="AF0012" DefaultLevel="Warning" English="You can not call methods with a hardcoded string parameter" French="Vous ne pouvez pas appeler de methodes avec un string en dur comme paramètre" />
-	<CodeAnalysisRule ID="AF0013" DefaultLevel="Warning" English="Type name must not contain: Model Extract, ModelPickers, ModelObjects, ModelObject, ModelContainer" French="Le nom du type ne doit pas contenir : ModelExtract, ModelPickers, ModelObjects, ModelObject, ModelContainer" />
-	<CodeAnalysisRule ID="AF0014" DefaultLevel="Warning" English="Method name must start with a capitalized letter" French="Le nom de la méthode doit commencer par une Majuscule" />
-	<CodeAnalysisRule ID="AF0015" DefaultLevel="Warning" English="Constant must be private" French="Une Constante doit être de type privée" />
-	<CodeAnalysisRule ID="AF0016" DefaultLevel="Warning" English="File name and location does not match class definition" French="Le nom et l'emplacement du fichier ne correspondent pas à la définition de classe" />
 	<CodeAnalysisRule ID="CA0001" DefaultLevel="Error" Link="https://msdn.microsoft.com/en-us/library/ms245246.aspx" English="An exception was raised within managed code analysis tool that does not indicate an expected error condition." French="Une exception a été levée dans l'outil d'analyse du code managé qui n'indique pas une condition d'erreur attendue." Spanish="Se inició una excepción dentro de la herramienta de análisis del código administrado que no indicondición de error esperada." />
 	<CodeAnalysisRule ID="CA0051" DefaultLevel="Error" Link="https://msdn.microsoft.com/en-us/library/ms245044.aspx" English="No rules were selected." French="Aucune règle n'a été sélectionnée." Spanish="No se seleccionó ninguna regla." />
 	<CodeAnalysisRule ID="CA0052" DefaultLevel="Error" Link="https://msdn.microsoft.com/en-us/library/ms245351.aspx" English="No targets were selected to analyze." French="Aucune cible n'a été sélectionnée pour l'analyse." Spanish="No se seleccionó ningún destino para analizar." />

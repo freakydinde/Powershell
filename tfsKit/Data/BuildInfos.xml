@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <BuildReports version="0.29">
 	<Tfs>
-		<CollectionUri>https://tfs.axacolor.igo6.com/tfs/DefaultCollection</CollectionUri>
-		<ProjectName>COLOR-SP</ProjectName>
+		<CollectionUri>https://tfs.yourprojectname/DefaultCollection</CollectionUri>
+		<ProjectName>yourProjectName</ProjectName>
 	</Tfs>
-	<Build name="CI-IGO6-R1.2">
+	<Build name="YourBuildName">
 		<CompilationThreshold>200</CompilationThreshold>
 		<CodeAnalysisThreshold>100</CodeAnalysisThreshold>
 		<CodeCoverageThreshold>60</CodeCoverageThreshold>
 		<Recipients>
-			<SendTo>armand.lacore@soat.fr</SendTo>	
+			<SendTo>sendEmailTo@exemple.com</SendTo>
+			<SendTo>sendEmailTo2@exemple.com</SendTo>	
 		</Recipients>
 	</Build>
 	<Mail>
