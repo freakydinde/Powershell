@@ -803,253 +803,6 @@ Function Write-LogWarning
 	}
 }
 
-<#
-.Synopsis
-Write a Object array or Hashtable/OrderedDictionary collection to html table
-
-.Description
-Write a one level object array or Hashtable/OrderedDictionary collection into html table
-
-.Parameter Object
-One level object array or Hashtable/OrderedDictionary collection to report
-
-.Parameter TableClass
-If set, define the table class
-
-.Parameter ThClass
-If set, define the table header class
-
-.Parameter TrClass
-If set, define the table row class
-
-.Parameter TdClass
-If set, define the table data class
-
-.Parameter Horizontal
-Switch, set to true if you want to print html table horizontaly
-
-.Parameter SkipTh
-Switch, set to true if you don't want to print table header
-
-.Example
-Write-ObjectToHtml $object -FirstLineAsTh -ThClass "bigTitle"
-
-.Outputs
-object formated as HTML table on success / null on fail
-#>
-Function Write-ObjectToHtml
-{
-	[CmdletBinding()]
-	Param (	[Parameter(Mandatory=$true,Position=0)][AllowNull()][object]$Object,
-			[Parameter(Mandatory=$false,Position=1)][string]$TableClass,
-			[Parameter(Mandatory=$false,Position=2)][string]$ThClass,
-			[Parameter(Mandatory=$false,Position=3)][string]$TrClass,
-			[Parameter(Mandatory=$false,Position=4)][string]$TdClass,
-			[Parameter(Mandatory=$false,Position=5)][string]$TableId,
-            [Parameter(Mandatory=$false,Position=6)][switch]$Horizontal,
-            [Parameter(Mandatory=$false,Position=7)][switch]$SkipTh,
-            [Parameter(Mandatory=$false,Position=8)][switch]$EncodeHtml	)
-
-	Write-LogDebug "Start Write-ObjectToHtml"
-	
-	try
-	{
-		Write-LogVerbose "Saving custom PSObjects to HTML table"
-        
-        if ($Object)
-        {
-            # initialize return value
-		    $htmlTable = [string]::Empty
-        
-            if ($TableClass) { $TableClass = " class=`"$TableClass`"" } else { $TableClass = [string]::Empty }
-            if ($ThClass) { $ThClass = " class=`"$ThClass`"" } else { $ThClass = [string]::Empty }
-            if ($TrClass) { $TrClass = " class=`"$TrClass`"" } else { $TrClass = [string]::Empty }
-            if ($TdClass) { $TdClass = " class=`"$TdClass`"" } else { $TdClass = [string]::Empty }
-            if ($TableId) { $TableId = " Id=`"$TableId`"" } else { $TableId = [string]::Empty }
-
-		    if ($Object -is [array])
-		    {
-			    $testLine = $Object | Select -First 1
-		    }
-		    else
-		    {
-			    $testLine = $Object
-		    }
-
-		    if ($testLine -is [Collections.Hashtable] -or $testLine -is [Collections.Specialized.OrderedDictionary])
-		    {
-			    $propertiesName = $testLine.Keys
-		    }
-		    elseif ($testLine -is [PSCustomObject])
-		    {
-			    $propertiesName = $testLine | Get-Member -MemberType NoteProperty
-		    }
-		    else
-		    {
-			    Throw "this method only allow PsCustomObject or Hashtable content"
-		    }
-            
-		    # write table start
-            $htmlTable += "<table$($TableId)$($TableClass)>$([Environment]::NewLine)"
-			
-            # write table header
-		    if (!$SkipTh -and !$Horizontal)
-		    {
-                $htmlTable += "`t<tr$($TrClass)>"
-
-			    foreach ($propertyName in $propertiesName)
-			    {
-                    $htmlTable += "<th$($ThClass)>$propertyName</th>"
-			    }
-
-			    $htmlTable += "</tr>$([Environment]::NewLine)"
-		    }
-
-		    # write table rows
-		    foreach ($entity in $Object)
-		    {
-                if (!$Horizontal)
-                {
-                    $htmlTable += "`t<tr$($TrClass)>"
-
-			        foreach ($propertyName in $propertiesName)
-			        {
-                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
-
-                        $htmlTable += "<td$($TdClass)>$propertyValue</td>"
-			        }
-
-			        $htmlTable += "</tr>$([Environment]::NewLine)"
-                }
-                else
-                {
-			        foreach ($propertyName in $propertiesName)
-			        {
-                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
-
-                        $htmlTable += "`t<tr$($TrClass)>"
-
-                        if (!$SkipTh)
-                        {
-                            $htmlTable += "<th$($TdClass)>$propertyName</th><td$($TdClass)>$propertyValue</td>"
-                        }
-                        else
-                        {
-                            $htmlTable += "<td$($TdClass)>$propertyValue</td>"
-                        }
-
-                        $htmlTable += "</tr>$([Environment]::NewLine)" 
-                    }
-                }
-		    }
-
-		    $htmlTable += "</table>"
-        }
-        else
-        {
-            Write-LogWarning "Object is null"
-            $htmlTable = [string]::Empty
-        }
-
-		# trace Success
-		Write-LogDebug "Success Write-ObjectToHtml"
-	}
-	catch
-	{
-        # log Error
-        Write-LogError $($_.Exception) $($_.InvocationInfo)
-	}
-
-	return $htmlTable
-}
-
-<#
-.Synopsis
-Write a objects array or Hashtable/OrderedDictionary collection to xml file
-
-.Description
-Write a objects array or Hashtable/OrderedDictionary collection array into xml file
-
-.Parameter Object
-One level object array or Hashtable/OrderedDictionary collection to report
-
-.Parameter Path
-Xml file output path
-
-.Parameter RootName
-Xml root element name
-
-.Parameter ElementName
-Xml elements name 
-
-.Example
-Write-ObjectToXml $array "C:\output.xml"
-
-.Outputs
-object formated as XML saved to file on success / null on fail
-#>
-Function Write-ObjectToXml
-{
-	[CmdletBinding()]
-	Param (	[Parameter(Mandatory=$true,Position=0)][PSObject]$Object,
-			[Parameter(Mandatory=$true,Position=1)][string]$Path,
-			[Parameter(Mandatory=$false,Position=2)][string]$Root="Document" )
-
-	Write-LogDebug "Start Write-ObjectToXml"
-	
-	try
-	{
-		# dirty temp todo OBSELETE CODE
-		# dirty temp todo OBSELETE CODE
-		# dirty temp todo OBSELETE CODE
-
-		Write-LogVerbose "Saving custom PSObject to XML file $($Path)"
-
-		# dirty temp todo OBSELETE CODE
-		$folder = (Split-Path $Path)
-
-		if (!(Test-Path $folder))
-		{
-			New-Item -Path $folder -ItemType Directory -Force
-		}
-
-		$xmlWriter = New-Object -TypeName System.Xml.XmlTextWriter -ArgumentList @($Path, [Text.Encoding]::GetEncoding("UTF-8"))
-		$xmlWriter.Formatting = "Indented"
-		$xmlWriter.Indentation = 1
-		$xmlWriter.IndentChar = "`t"
-		
-		$xmlWriter.WriteStartDocument()
-		
-		$xmlWriter.WriteStartElement($Root)
-
-		$members = $Object | Get-Member -MemberType NoteProperty
-
-		foreach ($member in $members)
-		{
-			$name = $member.Name
-			$value = $member.Definition -replace "^(.*)$name=(.*)$", '$2'
-
-			$xmlWriter.WriteElementString($name, $value)
-		}
-
-		$xmlWriter.WriteEndElement()
-		$xmlWriter.WriteEndDocument()
-		$xmlWriter.Flush()
-		$xmlWriter.Close()
-
-		# trace Success
-		Write-LogDebug "Success Write-ObjectToXml"
-	}
-	catch
-	{
-        # log Error
-        Write-LogError $($_.Exception) $($_.InvocationInfo)
-		$xml = $null
-	}
-
-	return $xml
-}
-
 #endregion
 
 #region XML
@@ -1417,6 +1170,88 @@ Function Test-XPath
     }
 
     return $returnValue
+}
+
+<#
+.Synopsis
+Write a psObject to xml elements
+ 
+.Description
+Write a one level psObject into xml elements
+
+.Parameter Object
+psObject to report
+
+.Parameter Path
+xml output path
+
+.Parameter RootName
+xml root name
+
+.Parameter ElementName
+xml element name 
+
+.Example
+Write-ObjectToXml -Object $psObject -Path "C:\output.xml"
+ 
+.Outputs
+true on success / false on fail
+#>
+Function Write-ObjectToXml
+{
+	[CmdletBinding()]
+	Param (	[Parameter(Mandatory=$true,Position=0)][PSObject]$Object,
+			[Parameter(Mandatory=$true,Position=1)][string]$Path,
+			[Parameter(Mandatory=$false,Position=2)][string]$Root="Document" )
+ 
+	Write-LogDebug "Start Write-ObjectToXml"
+	 
+	try
+	{
+		Write-LogVerbose "Saving custom PSObject to XML file $($Path)"
+
+		$folder = (Split-Path $Path)
+
+		if (!(Test-Path $folder))
+		{
+			New-Item -Path $folder -ItemType Directory -Force
+		}
+
+		$xmlWriter = New-Object -TypeName System.Xml.XmlTextWriter -ArgumentList @($Path, [Text.Encoding]::GetEncoding("UTF-8"))
+		$xmlWriter.Formatting = "Indented"
+		$xmlWriter.Indentation = 1
+		$xmlWriter.IndentChar = "`t"
+		 
+		$xmlWriter.WriteStartDocument()
+		 
+		$xmlWriter.WriteStartElement($Root)
+
+		$members = $Object | Get-Member -MemberType NoteProperty
+
+		foreach ($member in $members)
+		{
+			$name = $member.Name
+			$value = $member.Definition -replace "^(.*)$name=(.*)$", '$2'
+
+			$xmlWriter.WriteElementString($name, $value)
+		}
+
+		$xmlWriter.WriteEndElement()
+		$xmlWriter.WriteEndDocument()
+		$xmlWriter.Flush()
+		$xmlWriter.Close()
+
+		# trace Success
+		Write-LogDebug "Success Write-ObjectToXml"
+	}
+	catch
+	{
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+		$xml = $null
+	}
+ 
+	return $xml
 }
 
 #endregion
@@ -1979,3 +1814,340 @@ Function Set-SecureString
 }
 
 #endregion
+
+#region WEB
+
+<#
+.Synopsis
+get file from http
+
+.Description
+download file from http, then perform sha256 checksum integrity
+
+.Parameter FileSource
+http source file to download
+
+.Parameter FileDestination
+destination file (optionnal, null or default = ScriptPath\HttpFileName)
+
+.Parameter SHA256
+sha256 hash of the file, converted to Base64 String (optionnal, null or default = no verification)
+
+.Example
+Get-HttpFile -FileSource "http://blob/test.zip" -FileDestination "C:\tools\WelcomeApp.zip" -SHA256 "YDFGKJH5KJHLKJH123UUJH=="
+
+.Output
+true (download and checksum success) or false (download or checksum fail)
+#>
+Function Get-HttpFile
+{
+    Param ( [parameter(Mandatory=$true,Position=0)][string]$FileSource,
+            [parameter(Mandatory=$false,Position=1)][string]$FileDestination="$PSScriptRoot\$(Get-InString $FileSource "/" -Last -Right)",
+            [parameter(Mandatory=$false,Position=2)][string]$SHA256 )
+
+	Write-LogDebug "Start Get-HttpFile"
+				
+    try
+    {
+		Write-LogVerbose "downloading file $FileSource"
+			
+		# initialize returnValue
+		$returnValue = $false
+							
+		# Create destination tree
+		New-Item -Path $FileDestination -Type "file" -Force
+		
+        # set webclient, download file, dispose webClient
+        $webclient = New-Object System.Net.WebClient						
+        $webclient.DownloadFile($FileSource, $FileDestination)
+        $webclient.Dispose()
+
+        # test if destination file is present
+        if (Test-Path $FileDestination)
+        {
+            # perform sha256 checksum to check file authenticity
+            if ($SHA256)
+            {
+                # get sha256 for local file
+                $sha256Local = $(Get-SHA256 $FileDestination)
+				
+				Write-LogVerbose "comparing file checkum, local: $sha256Local ; server: $SHA256"
+				
+                # test sha256 are equals
+                if ($SHA256 -eq $sha256Local)
+                {   
+					Write-LogHost "SHA256 local and distant are identical"				
+                    $returnValue = $true
+                }
+				else
+				{
+					Write-LogWarning "SHA256 local and distant are different"	
+				}
+            }
+            else
+            {
+				Write-LogVerbose "no checksum file comparaison set"
+				
+				$returnValue = $true 
+            }
+        }
+        else
+        {
+            Throw "destination file $FileDestination is missing"
+        }
+		
+		# trace Success
+		Write-LogDebug "Success Get-SHA256"
+    }
+    catch
+    {
+        # log error
+        Write-LogError $($_.Exception) $($_.InvocationInfo) 
+    }
+	
+	return $returnValue
+}
+
+<#
+.Synopsis
+get information from web services
+
+.Description
+get data from web services
+
+.Parameter Url
+web svc url to query
+
+.Parameter Headers
+request headers array (optionnal, default : no headers)
+
+.Parameter Path
+xml path to query (optionnal, default : full document)
+
+.Output
+xml result on success, null on fail
+#>
+Function Get-WebService
+{
+	[CmdletBinding()]
+	Param (	[Parameter(Mandatory=$true,Position=0)][string]$Url,
+            [Parameter(Mandatory=$false,Position=1)][array]$Headers,
+            [Parameter(Mandatory=$false,Position=2)][string]$Path )
+
+	Write-LogDebug "Start Get-WebService"
+				
+    try
+    {
+		Write-LogVerbose "Getting web service $Url"
+		
+		Write-LogObject $Headers "Headers"
+					
+		# create http request object
+		$HttpReq = New-Object -ComObject Msxml2.XMLHTTP
+		
+		# set http request URL
+		$HttpReq.open('GET', $Url, $false)
+		
+        if ($Headers)
+        {
+            # set http request headers
+		    foreach($Header in $Headers)
+		    {
+			    $HttpReq.SetRequestHeader($Header[0], $Header[1])
+		    }
+        }
+
+		# send http request
+		$HttpReq.Send()
+        
+		# get http request response
+		$xmlResponse = $HttpReq.ResponseXML
+		
+		# Assign Node text to ReturnValue
+        if ($Path)
+        {
+            Foreach ($Node in $xmlResponse.SelectNodes($Path))
+            {
+			    $xmlResult += $Node.Text
+		    }
+        }
+        else
+        {
+            $xmlResult += $xmlResponse.Xml
+        }	
+
+		# trace Success
+		Write-LogDebug "Success Get-WebService"
+    }
+    catch
+    {
+		$xmlResult = $null
+		
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+	
+	return $xmlResult
+}
+
+<#
+.Synopsis
+Write a Object array or Hashtable/OrderedDictionary collection to html table
+
+.Description
+Write a one level object array or Hashtable/OrderedDictionary collection into html table
+
+.Parameter Object
+One level object array or Hashtable/OrderedDictionary collection to report
+
+.Parameter TableClass
+If set, define the table class
+
+.Parameter ThClass
+If set, define the table header class
+
+.Parameter TrClass
+If set, define the table row class
+
+.Parameter TdClass
+If set, define the table data class
+
+.Parameter Horizontal
+Switch, set to true if you want to print html table horizontaly
+
+.Parameter SkipTh
+Switch, set to true if you don't want to print table header
+
+.Example
+Write-ObjectToHtml $object -FirstLineAsTh -ThClass "bigTitle"
+
+.Outputs
+object formated as HTML table on success / null on fail
+#>
+Function Write-ObjectToHtml
+{
+	[CmdletBinding()]
+	Param (	[Parameter(Mandatory=$true,Position=0)][AllowNull()][object]$Object,
+			[Parameter(Mandatory=$false,Position=1)][string]$TableClass,
+			[Parameter(Mandatory=$false,Position=2)][string]$ThClass,
+			[Parameter(Mandatory=$false,Position=3)][string]$TrClass,
+			[Parameter(Mandatory=$false,Position=4)][string]$TdClass,
+			[Parameter(Mandatory=$false,Position=5)][string]$TableId,
+            [Parameter(Mandatory=$false,Position=6)][switch]$Horizontal,
+            [Parameter(Mandatory=$false,Position=7)][switch]$SkipTh,
+            [Parameter(Mandatory=$false,Position=8)][switch]$EncodeHtml	)
+
+	Write-LogDebug "Start Write-ObjectToHtml"
+	
+	try
+	{
+		Write-LogVerbose "Saving custom PSObjects to HTML table"
+        
+        if ($Object)
+        {
+            # initialize return value
+		    $htmlTable = [string]::Empty
+        
+            if ($TableClass) { $TableClass = " class=`"$TableClass`"" } else { $TableClass = [string]::Empty }
+            if ($ThClass) { $ThClass = " class=`"$ThClass`"" } else { $ThClass = [string]::Empty }
+            if ($TrClass) { $TrClass = " class=`"$TrClass`"" } else { $TrClass = [string]::Empty }
+            if ($TdClass) { $TdClass = " class=`"$TdClass`"" } else { $TdClass = [string]::Empty }
+            if ($TableId) { $TableId = " Id=`"$TableId`"" } else { $TableId = [string]::Empty }
+
+		    if ($Object -is [array])
+		    {
+			    $testLine = $Object | Select -First 1
+		    }
+		    else
+		    {
+			    $testLine = $Object
+		    }
+
+		    if ($testLine -is [Collections.Hashtable] -or $testLine -is [Collections.Specialized.OrderedDictionary])
+		    {
+			    $propertiesName = $testLine.Keys
+		    }
+		    elseif ($testLine -is [PSCustomObject])
+		    {
+			    $propertiesName = $testLine | Get-Member -MemberType NoteProperty
+		    }
+		    else
+		    {
+			    Throw "this method only allow PsCustomObject or Hashtable content"
+		    }
+            
+		    # write table start
+            $htmlTable += "<table$($TableId)$($TableClass)>$([Environment]::NewLine)"
+			
+            # write table header
+		    if (!$SkipTh -and !$Horizontal)
+		    {
+                $htmlTable += "`t<tr$($TrClass)>"
+
+			    foreach ($propertyName in $propertiesName)
+			    {
+                    $htmlTable += "<th$($ThClass)>$propertyName</th>"
+			    }
+
+			    $htmlTable += "</tr>$([Environment]::NewLine)"
+		    }
+
+		    # write table rows
+		    foreach ($entity in $Object)
+		    {
+                if (!$Horizontal)
+                {
+                    $htmlTable += "`t<tr$($TrClass)>"
+
+			        foreach ($propertyName in $propertiesName)
+			        {
+                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
+
+                        $htmlTable += "<td$($TdClass)>$propertyValue</td>"
+			        }
+
+			        $htmlTable += "</tr>$([Environment]::NewLine)"
+                }
+                else
+                {
+			        foreach ($propertyName in $propertiesName)
+			        {
+                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
+
+                        $htmlTable += "`t<tr$($TrClass)>"
+
+                        if (!$SkipTh)
+                        {
+                            $htmlTable += "<th$($TdClass)>$propertyName</th><td$($TdClass)>$propertyValue</td>"
+                        }
+                        else
+                        {
+                            $htmlTable += "<td$($TdClass)>$propertyValue</td>"
+                        }
+
+                        $htmlTable += "</tr>$([Environment]::NewLine)" 
+                    }
+                }
+		    }
+
+		    $htmlTable += "</table>"
+        }
+        else
+        {
+            Write-LogWarning "Object is null"
+            $htmlTable = [string]::Empty
+        }
+
+		# trace Success
+		Write-LogDebug "Success Write-ObjectToHtml"
+	}
+	catch
+	{
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+	}
+
+	return $htmlTable
+}
+
+#end
