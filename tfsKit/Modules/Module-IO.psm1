@@ -870,7 +870,7 @@ Get Xml element or attribute value
 Get value from an xml element or attribute identified by XPath
 
 .Parameter File
-Full path to the file edited
+Full path to a xml file as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to property to get
@@ -884,7 +884,7 @@ Element value on success / null on fail
 Function Get-XPathValue
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath )
 
     Write-LogDebug "Start Get-XPathValue"
@@ -895,12 +895,19 @@ Function Get-XPathValue
     try
     {
 		Write-LogVerbose "opening $File to get $XPath"
-
-		# get xml file
-		$xmlFile = [xml](Get-Content $File)
+		
+		# get xml
+		if ($File -is [string])
+		{
+			$xmlElements = [xml](Get-Content $File)
+		}
+		elseif ($File -is [Xml.XmlNode])
+		{
+			$xmlElements = $File
+		}
 
 		# get node corresponding to XPath
-		$xmlNode = $xmlFile.SelectSingleNode($XPath)
+		$xmlNode = $xmlElements.SelectSingleNode($XPath)
         
         if ($xmlNode)
         {
@@ -934,7 +941,7 @@ Set Xml element or attribute value
 Set / Add / Remove / Replace / Comment or UnComment an xml element or attribute identified by XPath
 
 .Parameter File
-full path to the edited file
+Full path to a xml file as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to the edited element or attribute
@@ -960,16 +967,13 @@ True on success / False on fail
 Function Set-XPathValue
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath,
 			[Parameter(Mandatory=$false,Position=2)][AllowNull()][string]$Value,
 			[Parameter(Mandatory=$false,Position=3)][AllowNull()][ValidateSet("","setValue", "add", "remove", "replace", "comment", "unComment")][string]$Type="setValue",
 			[Parameter(Mandatory=$false,Position=4)][AllowNull()][ValidateSet("","before", "after", "in")][string]$AddMode="in")
 
     Write-LogDebug "Start Set-XPathValue"
-
-    #initialize return value
-    [bool]$returnValue = $true
 
     try
     {
@@ -1001,22 +1005,31 @@ Function Set-XPathValue
             }
         }
 
-        Write-LogVerbose "editing file $File $message"
-
-		# get xml file
-		$xmlFile = [xml](Get-Content $File)
+		# get xml
+		if ($File -is [string])
+		{
+			Write-LogVerbose "editing file $File $message"
+			
+			$xmlElements = [xml](Get-Content $File)
+		}
+		elseif ($File -is [Xml.XmlNode])
+		{
+			Write-LogVerbose "editing xml elements $message"
+					
+			$xmlElements = $File
+		}
 
 		# get node corresponding to XPath
 		if ($Type -ne "unComment")
 		{
-			$xmlNode = $xmlFile.SelectSingleNode($XPath)
+			$xmlNode = $xmlElements.SelectSingleNode($XPath)
 		}
 		else
 		{
 			$parentXPath = Get-InString $XPath '/' -Last
 			$childXPath = $XPath -replace "$parentXPath/", ''
 
-			$xmlNode = $xmlFile.SelectNodes("$parentXPath/comment()") | ? { $_.InnerText -match "<$childXPath" }
+			$xmlNode = $xmlElements.SelectNodes("$parentXPath/comment()") | ? { $_.InnerText -match "<$childXPath" }
 		}
 
 		# test node availability
@@ -1032,7 +1045,7 @@ Function Set-XPathValue
 			{
 				Write-LogVerbose "add $Value to $XPath"
 
-				$tempNode = $xmlFile.CreateElement("tempNode")
+				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $Value
 
                 if ($AddMode -eq "in")
@@ -1062,7 +1075,7 @@ Function Set-XPathValue
 			{
 				Write-LogVerbose "replace $XPath with $Value"
 
-				$tempNode = $xmlFile.CreateElement("tempNode")
+				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $Value
 
 				$xmlNode.ParentNode.ReplaceChild($tempNode.FirstChild, $xmlNode)
@@ -1084,29 +1097,38 @@ Function Set-XPathValue
 			{
 				Write-LogVerbose "comment $XPath"
 
-				$xmlComment = $xmlFile.CreateComment($xmlNode.OuterXml)
+				$xmlComment = $xmlElements.CreateComment($xmlNode.OuterXml)
 				$xmlNode.ParentNode.ReplaceChild($xmlComment, $xmlNode)
 			}
 			"unComment"
 			{
 				Write-LogVerbose "unComment $XPath"
 
-				$tempNode = $xmlFile.CreateElement("tempNode")
+				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $xmlNode.Value
 
 				$xmlNode.ParentNode.ReplaceChild($($tempNode.SelectSingleNode("/$childXPath")), $xmlNode)
 			}
 		}
 
-		# save file
-		$xmlFile.Save($File)
+		# save file or assign modified Xml.Elements to returnValue
+		if ($File -is [string])
+		{
+			$xmlElements.Save($File)
+			
+			[boolean]$returnValue = $true
+		}
+		elseif ($File -is [Xml.XmlNode])
+		{
+			[Xml.XmlNode]$returnValue = $xmlElements
+		}
 
 	    # trace Success
 	    Write-LogDebug "Success Set-XPathValue"
     }
     catch
     {
-        $returnValue = $false
+        [boolean]$returnValue = $false
 
         # log Error
         Write-LogError $($_.Exception) $($_.InvocationInfo)
@@ -1123,7 +1145,7 @@ Test if an attribute or element exist
 Send true if XPath is found on File, false if not
 
 .Parameter File
-Full path to the edited file
+Full path to a xml file as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to test
@@ -1137,7 +1159,7 @@ True if XPath exist / False if XPath does not exist or method fail
 Function Test-XPath
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath )
 
     Write-LogDebug "Start Test-XPath"
@@ -1149,11 +1171,18 @@ Function Test-XPath
     {
 		Write-LogVerbose "opening $File to test if $XPath exists"
 
-		# get xml file
-		$xmlFile = [xml](Get-Content $File)
+		# get xml
+		if ($File -is [string])
+		{
+			$xmlElements = [xml](Get-Content $File)
+		}
+		elseif ($File -is [Xml.XmlNode])
+		{
+			$xmlElements = $File
+		}
 
 		# get node corresponding to XPath
-		$xmlNode = $xmlFile.SelectSingleNode($XPath)
+		$xmlNode = $xmlElements.SelectSingleNode($XPath)
         
         if ($xmlNode)
         {
@@ -1280,9 +1309,9 @@ Function Add-Assemblies
     Param
     (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
 		[Parameter(Mandatory=$false,Position=1)][switch]$NotMicrosoft )
- 
+
     Write-LogDebug "Start Add-Assemblies"
- 
+
     try
     {
         foreach ($name in $ShortNames)
@@ -1910,29 +1939,29 @@ Function Get-HttpFile
 
 <#
 .Synopsis
-get information from web services
+Get data from web services
 
 .Description
-get data from web services
+Get data from web services using Msxml2.XMLHTTP
 
 .Parameter Url
 web svc url to query
 
 .Parameter Headers
-request headers array (optionnal, default : no headers)
+Request headers array (optionnal, default : no headers)
 
 .Parameter Path
-xml path to query (optionnal, default : full document)
+Xpath selection from response (optionnal, default : full document)
 
 .Output
-xml result on success, null on fail
+Xml result on success, null on fail
 #>
 Function Get-WebService
 {
 	[CmdletBinding()]
 	Param (	[Parameter(Mandatory=$true,Position=0)][string]$Url,
             [Parameter(Mandatory=$false,Position=1)][array]$Headers,
-            [Parameter(Mandatory=$false,Position=2)][string]$Path )
+            [Parameter(Mandatory=$false,Position=2)][string]$XPath )
 
 	Write-LogDebug "Start Get-WebService"
 				
@@ -1964,12 +1993,9 @@ Function Get-WebService
 		$xmlResponse = $HttpReq.ResponseXML
 		
 		# Assign Node text to ReturnValue
-        if ($Path)
+        if ($XPath)
         {
-            Foreach ($Node in $xmlResponse.SelectNodes($Path))
-            {
-			    $xmlResult += $Node.Text
-		    }
+            $xmlResult = Get-XPathValue $($xmlResponse.Xml) $XPath
         }
         else
         {

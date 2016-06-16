@@ -27,8 +27,9 @@ Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French",
   		[Parameter(Mandatory=$false,Position=1)][Validateset("Host","Verbose","Debug","Trace")][string]$LogLevel="Verbose" )
   
 # import kit modules
+$modulesPath = [IO.Path]::Combine($(Split-Path $PSScriptRoot), "Modules")
 $modulesShortName = @("IO", "Tfs")
-$modulesShortName | % { if (!(Get-Module -Name "Module-$_")) { Import-Module ([IO.Path]::Combine($PSScriptRoot, "Modules", "Module-$_.psm1")) -Force -Global } }
+$modulesShortName | % { if (!(Get-Module -Name "Module-$_")) { Import-Module ([IO.Path]::Combine($modulesPath, "Module-$_.psm1")) -Force -Global } }
 
 # define verbose log level and create or clean temp folder (functions from Module-IO)
 Set-LogLevel $LogLevel

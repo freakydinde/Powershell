@@ -14,4 +14,4 @@ Save-Credentials
     author		: Armand Lacore
 #>
 
-Get-Credential -Message "Please enter your Email credentials" | Export-Clixml ([IO.Path]::Combine($PSScriptRoot, "Data", "mail@$($env:username)@$($env:computername).clixml"))
+Get-Credential -Message "Please enter your Email credentials" | Export-Clixml ([IO.Path]::Combine($(Split-Path $PSScriptRoot), "Data", "mail@$($env:username)@$($env:computername).clixml"))
