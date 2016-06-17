@@ -16,7 +16,7 @@ Send-BuildInfos
 
 .Notes  
     fileName	: Send-BuildInfos.ps1
-    version		: 0.026
+    version		: 0.027
     author		: Armand Lacore
 #>
 
@@ -26,13 +26,16 @@ Send-BuildInfos
 Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French","Spanish")][string]$Language="English",
   		[Parameter(Mandatory=$false,Position=1)][Validateset("Host","Verbose","Debug","Trace")][string]$LogLevel="Verbose" )
   
-# import kit modules
-$modulesPath = [IO.Path]::Combine($(Split-Path $PSScriptRoot), "Modules")
-$modulesShortName = @("IO", "Tfs")
-$modulesShortName | % { if (!(Get-Module -Name "Module-$_")) { Import-Module ([IO.Path]::Combine($modulesPath, "Module-$_.psm1")) -Force -Global } }
+# import Input\Output module
+if (!(Get-Module Module-IO)) { Import-Module ([IO.Path]::Combine((Split-Path $PSScriptRoot), "Modules", "Module-IO.psm1")) }
 
-# define verbose log level and create or clean temp folder (functions from Module-IO)
+# import colorkit modules
+Add-Modules @("Tfs") -Assert
+
+# define verbose log level
 Set-LogLevel $LogLevel
+
+# set temp folder Root\TempYYYYMMddHHmmssyyyy
 $tempFolder = Get-TempFolder
 		
 try
@@ -132,7 +135,7 @@ try
         $unitTestDetailsHtml = Write-ObjectToHtml $build.UnitTestsInfo.Details -TableClass "Details" -TableId "utDetails" -EncodeHtml
 		
         Write-LogDebug "code coverage summary"		
-        $CodeCoverageummaryHtml = Write-ObjectToHtml $build.CodeCoverageInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
+        $CodeCoverageSummaryHtml = Write-ObjectToHtml $build.CodeCoverageInfo.Summary -TableClass "Summary" -TableId "ccSum" -Horizontal
 		
         Write-LogDebug "code coverage details"		
         $codeCoverageDetailsHtml = Write-ObjectToHtml $build.CodeCoverageInfo.Details -TableClass "Details" -TableId "ccDetails" -EncodeHtml
@@ -190,10 +193,10 @@ try
             $mailHtml += "$(Add-ToEachLine $unitTestSummaryHtml "`t")"
         }
 		
-        if ($CodeCoverageummaryHtml)
+        if ($CodeCoverageSummaryHtml)
         {
             $mailHtml += "`t<h3 class=`"tableHeader`">Code coverage</h3>`r`n"
-            $mailHtml += "$(Add-ToEachLine $CodeCoverageummaryHtml "`t")"
+            $mailHtml += "$(Add-ToEachLine $CodeCoverageSummaryHtml "`t")"
         }
 		
         $mailHtml += "</div>"
@@ -244,7 +247,7 @@ try
 		Write-LogVerbose "Getting email configuration"
 
 		# get email credentials
-        $emailCredentialsPath = [IO.Path]::Combine($global:DataFolder, "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
+        $emailCredentialsPath = [IO.Path]::Combine($global:DataFolder, "Credentials", "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
 		if (Test-Path $emailCredentialsPath) { $emailCredentials = Import-Clixml $emailCredentialsPath }
 		else { Throw "credentials missing, email won't be send" }
         

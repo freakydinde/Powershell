@@ -11,20 +11,26 @@ launch powershell, set global properties and import modules
 # reload that script with noExit
 if ($args -NotContains "SecondLaunch")
 {
-	# admin mode : Start-Process PowerShell.exe -Verb Runas -ArgumentList "-NoProfile -NoLogo -NoExit -File $($PSScriptRoot)\Launcher.ps1 SecondLaunch" 
 	Start-Process PowerShell.exe -ArgumentList "-NoProfile -NoLogo -NoExit -File $($PSScriptRoot)\Launcher.ps1 SecondLaunch" 
     Exit 0
 }
 
-# Import all kit modules
-Get-ChildItem ([IO.Path]::Combine($PSScriptRoot, "Modules")) | % { Import-Module $_.FullName -Force -Global }
+# import Input\Ouput modules
+if (!(Get-Module Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot, "Modules", "Module-IO.psm1")) }
 
-# Set-LogLevel, Verbose = Error : Stop, Warning : Continue, Verbose : Continue, Debug : SilentlyContinue
+# Import all others modules
+Add-Modules -Assert
+
+# Error : Stop, Warning : Continue, Verbose : Continue, Debug : SilentlyContinue
 Set-LogLevel "Verbose"
 
-# Set-LogColor, default = Error : Red, Warning : Yellow, Debug : DarkGray, Verbose : Gray, Progress : Green
+# Error : Red, Warning : Yellow, Debug : DarkGray, Verbose : Gray, Progress : Green
 Set-LogColor
 
+# set UI Size to large
+Set-UISize
+
+# set UI title
 Set-UITitle "tfsKit"
 
 # set PS current folder to rootFolder

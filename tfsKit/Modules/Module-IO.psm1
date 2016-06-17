@@ -16,17 +16,17 @@ contain IO fonctionnality : log, xml, IO.
 # define root folder, this module is meant to be hosted in Root\Modules
 if (!$global:RootFolder) { $global:RootFolder = (Split-Path $PSScriptRoot) }
 
-# define kit folders : Assemblies (.dll), Data (.xml), Modules (.psm1), Logs (.log)
-if (!$global:AssembliesFolder) { $global:AssembliesFolder = [IO.Path]::Combine($global:RootFolder, "Assemblies") }
-if (!$global:DataFolder) { $global:DataFolder = [IO.Path]::Combine($global:RootFolder, "Data") }
-if (!$global:ModulesFolder) { $global:ModulesFolder = [IO.Path]::Combine($global:RootFolder, "Modules") }
-if (!$global:LogsFolder) { $global:LogsFolder = [IO.Path]::Combine($global:RootFolder, "Logs") }
-
 # create Logs folder if it does not exists
-if (!(Test-Path $global:LogsFolder)) { New-Item $global:LogsFolder -ItemType Directory -Force | Out-Null }
-		
+if (!(Test-Path ([IO.Path]::Combine($global:RootFolder, "Logs")))) { New-Item ([IO.Path]::Combine($global:RootFolder, "Logs")) -ItemType Directory -Force | Out-Null }
+
+# define global variables for kit folders
+foreach ($folderName in $((Get-ChildItem $global:RootFolder -Directory).Name)) { New-Variable -Name "$($folderName)Folder" -Value ([IO.Path]::Combine($global:RootFolder, $folderName)) -Scope Global }
+
 # define log file if not set
 if (!$global:LogFile) { $global:LogFile = [IO.Path]::Combine($global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
+
+# if exist, add scripts folder to session path
+if ($global:ScriptsFolder) { $env:path = "$env:path;$global:ScriptsFolder" }
 
 # variables used to get Write-LogError trace history
 $global:TraceBuffer = [string]::Empty
@@ -848,7 +848,7 @@ Function Get-Data
             $filePath = [IO.Path]::Combine($Folder, "$File.xml")
         }
 
-		$returnObject = [xml](Get-Content $filePath -Encoding UTF8)
+		$returnObject = [Xml.XmlDocument](Get-Content $filePath -Encoding UTF8)
 
         return $returnObject
 
@@ -1439,6 +1439,88 @@ Function Assert-Folders
         # log Error
         Write-LogError $($_.Exception) $($_.InvocationInfo)
     }
+}
+
+<#
+.Synopsis
+copy files to destination
+
+.Description
+use robocopy to copy files to destination folder
+
+.Parameter Source
+source folder
+
+.Parameter Destination
+destination folder
+
+.Parameter Files
+files list as String array (not Mandatory)
+
+.Parameter Options
+robocopy options, not mandatory, default = /S : copy subfolders, /W:5 : wait 5 seconds before retry, /MIR : mirror directories tree ( = purge + copy all subfolders even empty), /r:2 : 2 retry attempt
+
+.Example
+Copy-Files -Source "C:\folder" -Destination "\\SERVER\c$\folder" -Files @("bonjour.txt", "bonsoir.txt")
+
+.Outputs
+true (Success) \ false (Fail) \ null (reboot required)
+#>
+Function Copy-Robocopy
+{
+	[CmdletBinding()]
+	Param ( [Parameter(Mandatory=$true,Position=0)][string]$Source,
+			[Parameter(Mandatory=$true,Position=1)][string]$Destination,
+			[Parameter(Mandatory=$false,Position=2)][array]$Files,
+			[Parameter(Mandatory=$false,Position=3)][string]$Options="/S /W:5 /r:2 /MIR" )
+
+	Write-LogDebug "Start Copy-Robocopy"
+
+	#initialize return value
+	[bool]$returnValue = $true
+
+	try
+	{
+		Write-LogHost "launching robocopy" -LineBefore
+
+		if (!$Files)
+		{
+			$argumentsList = "`"$Source`" `"$Destination`" $Options"
+		}
+		else
+		{
+			$argumentsList = "`"$Source`" `"$Destination`" $Files $Options"
+		}
+
+		Write-LogVerbose "robocopy arguments list : $argumentsList"
+
+		# launch robocopy process
+		$copyProcess = Start-Process robocopy -ArgumentList $argumentsList -PassThru -Wait -WindowStyle Hidden
+
+		if ($($copyProcess.ExitCode) -in @(1, 2, 3))
+		{
+			Write-LogHost "robocopy exit code $($copyProcess.ExitCode) (success)"
+		}
+		elseif ($($copyProcess.ExitCode) -eq 0)
+		{
+			Write-LogWarning "robocopy exit code $($copyProcess.ExitCode) (no change)"
+		}
+		else
+		{
+			Throw "robocopy exit code $($copyProcess.ExitCode)"
+		}
+
+		# trace Success
+		Write-LogDebug "Success Copy-Robocopy"
+	}
+	catch
+	{
+		# log Error
+		Write-LogError $($_.Exception) $($_.InvocationInfo)
+		$returnValue = $false
+	}
+
+	return $returnValue
 }
 
 <#

@@ -10,8 +10,11 @@ Save-Credentials
 
 .Notes  
     fileName	: Save-Credentials.ps1
-    version		: 0.002
+    version		: 0.003
     author		: Armand Lacore
 #>
 
-Get-Credential -Message "Please enter your Email credentials" | Export-Clixml ([IO.Path]::Combine($(Split-Path $PSScriptRoot), "Data", "mail@$($env:username)@$($env:computername).clixml"))
+$credentialsFolder = [IO.Path]::Combine($(Split-Path $PSScriptRoot), "Data", "Credentials")
+if (!(Test-Path $credentialsFolder)) { New-Item $credentialsFolder -ItemType Directory -Force }
+
+Get-Credential -Message "Please enter your Email credentials" | Export-Clixml ([IO.Path]::Combine($credentialsFolder, "mail@$($env:username)@$($env:computername).clixml"))
