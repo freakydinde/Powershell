@@ -19,8 +19,8 @@ if (!$global:RootFolder) { $global:RootFolder = (Split-Path $PSScriptRoot) }
 # create Logs folder if it does not exists
 if (!(Test-Path ([IO.Path]::Combine($global:RootFolder, "Logs")))) { New-Item ([IO.Path]::Combine($global:RootFolder, "Logs")) -ItemType Directory -Force | Out-Null }
 
-# define global variables for kit folders
-foreach ($folderName in $((Get-ChildItem $global:RootFolder -Directory).Name)) { New-Variable -Name "$($folderName)Folder" -Value ([IO.Path]::Combine($global:RootFolder, $folderName)) -Scope Global }
+# define global variables for each kit folders
+Get-ChildItem $global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)Folder" -Value ([IO.Path]::Combine($global:RootFolder, $_.Name)) -Scope Global }
 
 # define log file if not set
 if (!$global:LogFile) { $global:LogFile = [IO.Path]::Combine($global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
@@ -38,50 +38,6 @@ Add-Type -Assembly System.Web
 #endregion
 
 #region LOGGIN
-
-<#
-.Synopsis
-Add text to each line of a given text
-
-.Description
-Split text into array with separator `n, then add text before and/or after each line
-
-.Parameter Text
-Original text to append
-
-.Parameter LineBegin
-Text to add to the begining of each line
-
-.Parameter LineEnd
-Text to add to the end of each line
-
-.Example
-Add-ToEachLine $text "`t`t"
-
-.Outputs
-Original text appended with extra text
-#>
-Function Add-ToEachLine
-{
-	Param ( [Parameter(Mandatory=$true,Position=0)][AllowEmptyString()][string]$Text,
-			[Parameter(Mandatory=$false,Position=1)][string]$LineBegin=[string]::Empty,
-			[Parameter(Mandatory=$false,Position=2)][string]$LineEnd=[string]::Empty )
-
-	#initialize return value
-	$returnText = [string]::Empty
-	
-	try
-	{
-		$Text.Split("`n") | % { $returnText += "$($LineBegin)$($_)$($LineEnd)`n" }
-	}
-	catch
-	{
-	    # log Error
-	    Write-LogError $($_.Exception) $($_.InvocationInfo)
-	}
-
-    return $returnText
-}
 
 <#
 .Synopsis
@@ -161,7 +117,7 @@ Function Format-Message
 <#
 .Synopsis
 Set powershell UI size
-Â 
+ 
 .Description
 Set powershell UI size and buffer to get better console message display
 
@@ -188,8 +144,8 @@ Function Set-UISize
 	try
 	{
 		# 3000 lines height is the default buffer height value
-		$host.UI.RawUI.BufferSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList @($Width, 3000)
-		$host.UI.RawUI.WindowSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList @($Width, $Height)
+		$host.UI.RawUI.BufferSize = New-Object Management.Automation.Host.Size -ArgumentList @($Width, 3000)
+		$host.UI.RawUI.WindowSize = New-Object Management.Automation.Host.Size -ArgumentList @($Width, $Height)
 		
 		# trace Success
 		Write-LogDebug "Success Set-UISize"
@@ -204,7 +160,7 @@ Function Set-UISize
 <#
 .Synopsis
 Set powershell UI title
-Â 
+ 
 .Description
 Set UI Title from $host.UI object
 
@@ -264,11 +220,10 @@ Foreground color of progress message
 Set-LogColor
 
 .Example
-Set-LogColor -ErrorColor "DarkCyan" -WarningColor "DarkRed" -DebugColor "DarkGreen" -VerboseColor "Gray" -ProgressColor "White"
+Set-LogColor -ErrorColor DarkCyan -WarningColor DarkRed -DebugColor DarkGreen -VerboseColor Gray -ProgressColor White
 #>
 Function Set-LogColor
 {
-	# Black, DarkBlue, DarkGreen, DarkCyan, DarkRed, DarkMagenta, DarkYellow, Gray, DarkGray, Blue, Green, Cyan, Red, Magenta, Yellow, White
 	Param (	[Parameter(Mandatory=$false,Position=0)][ConsoleColor]$ErrorColor = "Red",
 			[Parameter(Mandatory=$false,Position=1)][ConsoleColor]$WarningColor = "Yellow",
 			[Parameter(Mandatory=$false,Position=2)][ConsoleColor]$DebugColor = "DarkGray",
@@ -444,8 +399,8 @@ Print message to console, append message to log file
 #>
 Function Write-LogError
 {
-	Param ( [Parameter(Mandatory=$true,Position=0)][System.Exception]$Exception,
-            [Parameter(Mandatory=$true,Position=1)][System.Management.Automation.InvocationInfo]$InvocationInfo,
+	Param ( [Parameter(Mandatory=$true,Position=0)][Exception]$Exception,
+            [Parameter(Mandatory=$true,Position=1)][Management.Automation.InvocationInfo]$InvocationInfo,
 			[Parameter(Mandatory=$false,Position=2)][string]$Title,
 			[Parameter(Mandatory=$false,Position=3)][switch]$LineAfterTitle )
 
@@ -469,7 +424,7 @@ Function Write-LogError
 			$message = ($InvocationInfo | Select-Object MyCommand, ScriptLineNumber, ScriptName, Line, OffsetInLine | Format-List | Out-String)
 			$message += [Environment]::NewLine
 
-			if ($Exception -is [System.Reflection.ReflectionTypeLoadException])
+			if ($Exception -is [Reflection.ReflectionTypeLoadException])
 			{
 				$message += ($Exception | Select-Object Message, Source, LoaderExceptions, StackTrace | Format-List | Out-String)
 			}
@@ -575,6 +530,12 @@ Content of the message to trace
 .Parameter Title
 Title to insert before content message
 
+.Parameter ForeColor
+override default foreground color
+
+.Parameter BackColor
+override default background color
+
 .Parameter LineBefore
 Insert blank line before text
 
@@ -594,16 +555,34 @@ Function Write-LogHost
 {
 	Param ( [Parameter(Mandatory=$true,Position=0)][AllowEmptyString()][string]$Message,
 			[Parameter(Mandatory=$false,Position=1)][string]$Title,
-			[Parameter(Mandatory=$false,Position=2)][switch]$LineBefore,
-			[Parameter(Mandatory=$false,Position=3)][switch]$LineAfter,
-			[Parameter(Mandatory=$false,Position=4)][switch]$LineAfterTitle )
+			[Parameter(Mandatory=$false,Position=2)][AllowNull()][ValidateSet("","Black","Blue","Cyan","DarkBlue","DarkCyan","DarkGray","DarkGreen","DarkMagenta","DarkRed","DarkYellow","Gray","Green","Magenta","Red","White","Yellow")][string]$ForeColor,
+			[Parameter(Mandatory=$false,Position=3)][AllowNull()][ValidateSet("","Black","Blue","Cyan","DarkBlue","DarkCyan","DarkGray","DarkGreen","DarkMagenta","DarkRed","DarkYellow","Gray","Green","Magenta","Red","White","Yellow")][string]$BackColor,
+			[Parameter(Mandatory=$false,Position=4)][switch]$LineBefore,
+			[Parameter(Mandatory=$false,Position=5)][switch]$LineAfter,
+			[Parameter(Mandatory=$false,Position=6)][switch]$LineAfterTitle )
 
 	try
 	{
 		$toWrite = Format-Message $Message $Title $LineBefore $LineAfter $LineAfterTitle
 
 		Add-Content $toWrite -Path $global:LogFile
-		Write-Host $toWrite
+		
+		if (!$ForeColor -and !$BackColor)
+		{
+			Write-Host $toWrite
+		}
+		elseif ($ForeColor -and $BackColor)
+		{
+			Write-Host $toWrite -ForegroundColor $ForeColor -BackgroundColor $BackColor
+		}
+		elseif ($ForeColor)
+		{
+            Write-Host $toWrite -ForegroundColor $ForeColor
+		}
+		elseif ($BackColor)
+		{
+            Write-Host $toWrite -BackgroundColor $BackColor
+		}
 	}
 	catch
 	{
@@ -680,7 +659,7 @@ Function Write-LogObject
 		switch ($Level)
 		{
 			"Host"
-			{ Write-LogHost $toWrite $Title (!$SkipLineBefore) (!$SkipLineAfter) $LineAfterTitle }
+			{ Write-LogHost $toWrite $Title $null $null (!$SkipLineBefore) (!$SkipLineAfter) $LineAfterTitle }
 			"Verbose"
 			{ Write-LogVerbose $toWrite $Title (!$SkipLineBefore) (!$SkipLineAfter) $LineAfterTitle }
 			"Warning"
@@ -812,16 +791,14 @@ Function Write-LogWarning
 Return xml data from file
 
 .Description
-Iterate short names array then test-path, complete short name, set path, read and return xml file as object
+Read xml from file path and return Xml.XmlDocument
+
 
 .Parameter File
-File name without extension, or file full path if you use switch -IsFullPath
+File name without extension and folder, or file full path
 
 .Parameter Folder
 File folder if file is not hosted in Root\Data folder (not mandatory)
-
-.Parameter IsFullPath
-Switch set to true if $File is a file full path
 
 .Example
 Get-Data "CodeAnalysis"
@@ -838,8 +815,8 @@ Function Get-Data
     try
     {
         Write-LogVerbose "reading $File data file"
-
-        if ($IsFullPath)
+	
+        if ($File.EndsWith(".xml") -or $File.EndsWith(".config") -or $File.EndsWith(".dtsConfig"))
         {
             $filePath = $File
         }
@@ -850,16 +827,25 @@ Function Get-Data
 
 		$returnObject = [Xml.XmlDocument](Get-Content $filePath -Encoding UTF8)
 
-        return $returnObject
-
 	    # trace Success
 	    Write-LogDebug "Success Get-Data"
     }
+	catch [Management.Automation.ItemNotFoundException]
+	{
+		# warn file not found
+		Write-LogWarning $($_.Exception.Message)
+		
+		$returnObject = $null
+	}
     catch
     {
         # log Error
         Write-LogError $($_.Exception) $($_.InvocationInfo)
+		
+		$returnObject = $null
     }
+	
+	return $returnObject
 }
 
 <#
@@ -869,8 +855,8 @@ Get Xml element or attribute value
 .Description
 Get value from an xml element or attribute identified by XPath
 
-.Parameter File
-Full path to a xml file as string, or xml elements as XmlElements
+.Parameter Source
+Full path to a xml Source as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to property to get
@@ -884,7 +870,7 @@ Element value on success / null on fail
 Function Get-XPathValue
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$Source,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath )
 
     Write-LogDebug "Start Get-XPathValue"
@@ -894,16 +880,16 @@ Function Get-XPathValue
 
     try
     {
-		Write-LogVerbose "opening $File to get $XPath"
+		Write-LogVerbose "opening $Source to get $XPath"
 		
 		# get xml
-		if ($File -is [string])
+		if ($Source -is [string])
 		{
-			$xmlElements = [xml](Get-Content $File)
+			$xmlElements = Get-Data $Source
 		}
-		elseif ($File -is [Xml.XmlNode])
+		elseif ($Source -is [Xml.XmlNode])
 		{
-			$xmlElements = $File
+			$xmlElements = $Source
 		}
 
 		# get node corresponding to XPath
@@ -940,8 +926,8 @@ Set Xml element or attribute value
 .Description
 Set / Add / Remove / Replace / Comment or UnComment an xml element or attribute identified by XPath
 
-.Parameter File
-Full path to a xml file as string, or xml elements as XmlElements
+.Parameter Source
+Full path to a xml Source as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to the edited element or attribute
@@ -967,7 +953,7 @@ True on success / False on fail
 Function Set-XPathValue
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$Source,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath,
 			[Parameter(Mandatory=$false,Position=2)][AllowNull()][string]$Value,
 			[Parameter(Mandatory=$false,Position=3)][AllowNull()][ValidateSet("","setValue", "add", "remove", "replace", "comment", "unComment")][string]$Type="setValue",
@@ -1006,17 +992,17 @@ Function Set-XPathValue
         }
 
 		# get xml
-		if ($File -is [string])
+		if ($Source -is [string])
 		{
-			Write-LogVerbose "editing file $File $message"
+			Write-LogVerbose "editing Source $Source $message"
 			
-			$xmlElements = [xml](Get-Content $File)
+			$xmlElements = Get-Data $Source
 		}
-		elseif ($File -is [Xml.XmlNode])
+		elseif ($Source -is [Xml.XmlNode])
 		{
 			Write-LogVerbose "editing xml elements $message"
 					
-			$xmlElements = $File
+			$xmlElements = $Source
 		}
 
 		# get node corresponding to XPath
@@ -1111,14 +1097,14 @@ Function Set-XPathValue
 			}
 		}
 
-		# save file or assign modified Xml.Elements to returnValue
-		if ($File -is [string])
+		# save Source or assign modified Xml.Elements to returnValue
+		if ($Source -is [string])
 		{
-			$xmlElements.Save($File)
+			$xmlElements.Save($Source)
 			
 			[boolean]$returnValue = $true
 		}
-		elseif ($File -is [Xml.XmlNode])
+		elseif ($Source -is [Xml.XmlNode])
 		{
 			[Xml.XmlNode]$returnValue = $xmlElements
 		}
@@ -1137,15 +1123,190 @@ Function Set-XPathValue
     return $returnValue
 }
 
+<# 
+.Synopsis
+set settings from xpath
+ 
+.Description
+apply parameters transformation from xpath list
+ 
+.Parameter Source
+Settings Source, can be a file path as string, or XmlNode
+
+.Parameter DynamicValues
+Hashtable containing values to replace into file (replace @key by keyValue)
+
+.Parameter Folder
+Working folder, path parameter in xml stream start from this folder, if Source is a file and working folder is not set, working folder become file source path
+
+.Example
+Set-XPathSettings "\\qaafaclr01app04\i$\APPS\Batch\QA2\SetSettings.xml"
+ 
+.Outputs
+true on success / false on fail
+#> 
+Function Set-XPathSettings
+{
+    [CmdletBinding()]
+    Param 
+	(   [Parameter(Mandatory=$true,Position=0)][object]$Source,
+		[Parameter(Mandatory=$false,Position=1)][Collections.Hashtable]$DynamicValues,
+        [Parameter(Mandatory=$false,Position=2)][AllowEmptyString()][AllowNull()][string]$Folder )
+
+    Write-LogDebug "Start Set-XPathSettings"
+
+    #initialize return value
+    [bool]$returnValue = $true    
+
+    try
+	{
+		if ($Source -is [string])
+        {
+            $Settings = (Get-Data $Source).SelectNodes("/*/*")
+
+			if (!$Folder) {	$Folder = Split-Path $Source }
+        }
+		elseif ($Source -is [Xml.XmlNode])
+		{
+			$Settings = $Source
+		}
+        
+        foreach ($parameters in $Settings)
+        {
+			if ($Folder)
+			{
+				$editionFile = "$($Folder)$($parameters.File)"
+			}
+			else
+			{
+				$editionFile = [string]($parameters.File)
+			}
+			
+            if ($parameters.Condition)
+            {
+                $asserted = $true
+
+                foreach ($condition in $parameters.Condition)
+                {
+                    Write-LogVerbose "testing condition $($condition.verb) on $($condition.xpath)"
+
+                    if ($condition.verb -eq "exists" -or $condition.verb -eq "notExists")
+                    {
+                        $xpathExists = Test-XPath $editionFile $condition.xpath
+
+                        if (($xpathExists -and $condition.verb -eq "Exists") -or (!$xpathExists -and $condition.verb -eq "NotExists"))
+                        {
+                            $asserted = $true
+                            Write-LogVerbose "condition is true"
+                        }
+                        else
+                        {
+                            $asserted = $false
+                            Write-LogVerbose "condition is false"
+                        }
+                    }
+                    elseif ($condition.verb -eq "isValue" -or $condition.verb -eq "isNotValue")
+                    {
+                        $xpathValue = Get-XPathValue $editionFile $condition.xpath
+
+                        if (($xpathValue -eq $condition.value -and $condition.verb -eq "isValue") -or ($xpathValue -ne $condition.value -and $condition.verb -eq "isNotValue"))
+                        {
+                            $asserted = $true
+                            Write-LogVerbose "condition is true"
+                        }
+                        else
+                        {
+                            $asserted = $false
+                            Write-LogVerbose "condition is false"
+                        }
+                    }
+                }
+            }
+            else
+            {
+                $asserted = $true
+            }
+
+            if ($asserted)
+            {
+                foreach ($parameter in $parameters.Parameter)
+                {
+                    $xpath = [string]$parameter.xpath
+
+                    if ($parameter.type)
+                    {
+                        $editionType = [string]$parameter.type
+
+                        if ($editionType -eq "add")
+                        {
+                            if ($parameter.addMode)
+                            {
+                                $addMode = [string]$parameter.addMode
+                            }
+                            else
+                            {
+                                $addMode = "in"
+                            }
+                        }
+                    }
+                    else
+                    {
+                        $editionType = "setValue"
+                    }
+
+                    if ($parameter.value)
+                    {
+                        $value = [string]$parameter.value
+
+                        if ($value -eq '($ASK)') 
+                        { 
+                            $value = Read-Host "enter value for element referenced under :$([Environment]::NewLine)$xpath"
+                        }
+                        else
+                        {
+							$DynamicValues.Keys | % { $value = $value -replace "\(\`$$_\)", $($DynamicValues.$_) }
+                        }
+                    }
+                    else
+                    {
+                        $value = $null
+                    }
+
+                    try
+                    {
+                        Set-XPathValue $editionFile $xpath -Value $value -Type $editionType -AddMode $addMode | Out-Null              
+                    }
+                    catch
+                    {
+                        Write-LogWarning $($_.Exception | Select-Object Message, Source, ErrorCode, InnerException, StackTrace | Format-List | Out-String)
+                        $returnValue = $false
+                    }
+                }
+            }
+        }
+		
+	    # trace Success
+	    Write-LogDebug "Success Set-XPathSettings"
+    }
+    catch
+    {
+        # log Error 
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+        $returnValue = $false
+    }
+
+    return $returnValue
+}
+
 <#
 .Synopsis
 Test if an attribute or element exist
 
 .Description
-Send true if XPath is found on File, false if not
+Send true if XPath is found on Source, false if not
 
-.Parameter File
-Full path to a xml file as string, or xml elements as XmlElements
+.Parameter Source
+Full path to a xml Source as string, or xml elements as XmlElements
 
 .Parameter XPath
 Xpath to test
@@ -1159,7 +1320,7 @@ True if XPath exist / False if XPath does not exist or method fail
 Function Test-XPath
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][object]$File,
+    Param (	[Parameter(Mandatory=$true,Position=0)][object]$Source,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath )
 
     Write-LogDebug "Start Test-XPath"
@@ -1169,16 +1330,16 @@ Function Test-XPath
 
     try
     {
-		Write-LogVerbose "opening $File to test if $XPath exists"
+		Write-LogVerbose "opening $Source to test if $XPath exists"
 
 		# get xml
-		if ($File -is [string])
+		if ($Source -is [string])
 		{
-			$xmlElements = [xml](Get-Content $File)
+			$xmlElements = Get-Data $Source
 		}
-		elseif ($File -is [Xml.XmlNode])
+		elseif ($Source -is [Xml.XmlNode])
 		{
-			$xmlElements = $File
+			$xmlElements = $Source
 		}
 
 		# get node corresponding to XPath
@@ -1204,7 +1365,7 @@ Function Test-XPath
 <#
 .Synopsis
 Write a psObject to xml elements
-Â 
+ 
 .Description
 Write a one level psObject into xml elements
 
@@ -1218,11 +1379,11 @@ xml output path
 xml root name
 
 .Parameter ElementName
-xml element nameÂ 
+xml element name 
 
 .Example
 Write-ObjectToXml -Object $psObject -Path "C:\output.xml"
-Â 
+ 
 .Outputs
 true on success / false on fail
 #>
@@ -1232,9 +1393,9 @@ Function Write-ObjectToXml
 	Param (	[Parameter(Mandatory=$true,Position=0)][PSObject]$Object,
 			[Parameter(Mandatory=$true,Position=1)][string]$Path,
 			[Parameter(Mandatory=$false,Position=2)][string]$Root="Document" )
-Â 
+
 	Write-LogDebug "Start Write-ObjectToXml"
-	Â 
+	
 	try
 	{
 		Write-LogVerbose "Saving custom PSObject to XML file $($Path)"
@@ -1246,13 +1407,13 @@ Function Write-ObjectToXml
 			New-Item -Path $folder -ItemType Directory -Force
 		}
 
-		$xmlWriter = New-Object -TypeName System.Xml.XmlTextWriter -ArgumentList @($Path, [Text.Encoding]::GetEncoding("UTF-8"))
+		$xmlWriter = New-Object Xml.XmlTextWriter -ArgumentList @($Path, [Text.Encoding]::GetEncoding("UTF-8"))
 		$xmlWriter.Formatting = "Indented"
 		$xmlWriter.Indentation = 1
 		$xmlWriter.IndentChar = "`t"
-		Â 
+		
 		$xmlWriter.WriteStartDocument()
-		Â 
+		
 		$xmlWriter.WriteStartElement($Root)
 
 		$members = $Object | Get-Member -MemberType NoteProperty
@@ -1279,7 +1440,7 @@ Function Write-ObjectToXml
         Write-LogError $($_.Exception) $($_.InvocationInfo)
 		$xml = $null
 	}
-Â 
+
 	return $xml
 }
 
@@ -1290,10 +1451,10 @@ Function Write-ObjectToXml
 <#
 .Synopsis
 Import assemblies array from ColorKit
-Â 
+ 
 .Description
 Import assemblies by assembly short name array
-Â 
+ 
 .Parameter ShortNames
 Short names list of the assemblies to import
 
@@ -1344,10 +1505,10 @@ Function Add-Assemblies
 <#
 .Synopsis
 Import modules from Kit Modules folder
-Â 
+ 
 .Description
 Import modules by module short name with -Global & -Force switch
-Â 
+ 
 .Parameter Names
 Short names list of the modules to import (not mandatory, default = all modules)
 
@@ -1364,7 +1525,7 @@ Function Add-Modules
     (   [Parameter(Mandatory=$false,Position=0)][array]$ShortNames,
 		[Parameter(Mandatory=$false,Position=1)][switch]$Assert )
 	
-	Write-LogDebug "Start Add-Modules"
+	Write-LogVerbose "Start Add-Modules"
 
     try
     {
@@ -1399,6 +1560,50 @@ Function Add-Modules
         # log Error
         Write-LogError $($_.Exception) $($_.InvocationInfo)
     }
+}
+
+<#
+.Synopsis
+Add text to each line of a given text
+
+.Description
+Split text into array with separator `n, then add text before and/or after each line
+
+.Parameter Text
+Original text to append
+
+.Parameter LineBegin
+Text to add to the begining of each line
+
+.Parameter LineEnd
+Text to add to the end of each line
+
+.Example
+Add-ToEachLine $text "`t`t"
+
+.Outputs
+Original text appended with extra text
+#>
+Function Add-ToEachLine
+{
+	Param ( [Parameter(Mandatory=$true,Position=0)][AllowEmptyString()][string]$Text,
+			[Parameter(Mandatory=$false,Position=1)][string]$LineBegin=[string]::Empty,
+			[Parameter(Mandatory=$false,Position=2)][string]$LineEnd=[string]::Empty )
+
+	#initialize return value
+	$returnText = [string]::Empty
+	
+	try
+	{
+		$Text.Split("`n") | % { $returnText += "$($LineBegin)$($_)$($LineEnd)`n" }
+	}
+	catch
+	{
+	    # log Error
+	    Write-LogError $($_.Exception) $($_.InvocationInfo)
+	}
+
+    return $returnText
 }
 
 <#
@@ -1578,7 +1783,7 @@ Function Get-InString
 	{
 		if ($SecondDelimiter)
 		{
-			if ($InString -match $Delimiter)
+			if ($InString -match [System.Text.RegularExpressions.Regex]::Escape($Delimiter))
 			{
 				if ($Last)
 				{
@@ -1589,14 +1794,14 @@ Function Get-InString
 					$index = $InString.IndexOf($Delimiter)
 				}
 
-				$tmpValue = $InString.substring($index + 1, ($InString.Length - $index - 1))
+				$tmpValue = $InString.substring($index + $Delimiter.Length, ($InString.Length - $index - $Delimiter.Length))
 			}
 			else
 			{
 				$tmpValue = $InString
 			}
 
-			if ($tmpValue -match $SecondDelimiter)
+			if ($tmpValue -match [System.Text.RegularExpressions.Regex]::Escape($SecondDelimiter))
 			{
 				if ($SecondLast)
 				{
@@ -1616,7 +1821,7 @@ Function Get-InString
 		}
 		else
 		{
-			if ($InString -match $Delimiter)
+			if ($InString -match [System.Text.RegularExpressions.Regex]::Escape($Delimiter))
 			{
 				if ($Last)
 				{
@@ -1666,6 +1871,64 @@ Function Get-InString
 
 <#
 .Synopsis
+get the percentage
+
+.Description
+get the percentage of processed element from processed and total numbers
+
+.Parameters Processed
+number of processed elements
+
+.Parameters Total
+number of total elements
+
+.Parameters String
+switch, set to true if you want the result as string
+
+.Outputs
+File Percentage string or double
+#>
+Function Get-Percentage
+{
+	[CmdletBinding()]
+	Param ( [Parameter(Mandatory=$true,Position=0)][double]$Processed, 
+			[Parameter(Mandatory=$true,Position=1)][double]$Total,
+			[Parameter(Mandatory=$false,Position=2)][switch]$String	)
+			
+
+	Write-LogDebug "Start Get-Percentage"
+
+	try
+	{
+		if (Total -ge Processed)
+		{
+			$result = [Math]::Round(100 - (100 * ($Total - $Processed) / $Total),2)
+		}
+		else
+		{
+			$result = 0
+		}
+		
+		if ($String)
+		{
+			$result = "$([string]$result)%"
+		}
+		
+		Write-LogDebug "Success Get-Percentage"
+		
+		return $result
+	}
+	catch
+	{
+		# log Error
+		Write-LogError $($_.Exception) $($_.InvocationInfo)
+	}
+
+	return $result
+}
+
+<#
+.Synopsis
 Prompt for user confirmation
 
 .Description
@@ -1701,20 +1964,25 @@ Function Get-Prompt
 	
 	try
 	{
-		$yes = New-Object -TypeName System.Management.Automation.Host.ChoiceDescription -ArgumentList @("&Yes", $YesCaption)
-		$no = New-Object -TypeName System.Management.Automation.Host.ChoiceDescription -ArgumentList @("&No", $NoCaption)
+		$yes = New-Object Management.Automation.Host.ChoiceDescription -ArgumentList @("&Yes", $YesCaption)
+		$no = New-Object Management.Automation.Host.ChoiceDescription -ArgumentList @("&No", $NoCaption)
 		$options = [Management.Automation.Host.ChoiceDescription[]]($yes, $no)
 
 		$confirmationChoice = $host.ui.PromptForChoice($Title, $Message, $options, 0)
 
 		if ($confirmationChoice -eq 0)
 		{
-			return $true
+			$result = $true
 		}
 		else
 		{
-			return $false
+			result = $false
 		}
+		
+		# trace Success
+	    Write-LogDebug "Success Get-Prompt"
+		
+		return $result
 	}
 	catch
 	{
@@ -1889,6 +2157,75 @@ Function Remove-Folder
 
 <#
 .Synopsis
+Replace dynamic value in Text
+
+.Description
+Replace dynamic values in Text from an Hashtable collection and a text containing variables
+
+.Parameter Text
+Text containing variables
+
+.Parameter DynamicValues
+Hashtable containing values to replace into text (replace @key by keyValue)
+
+.Parameter VariableIdentifier
+variable start with this characters, default = $
+
+.Parameter VariableBracket
+variable are nested into that bracket type, default = ()
+
+.Example
+Set-DynamicText "bonjour, ($Name)" @{"name"="Armand"}
+
+.Outputs
+Text with dynamic value replaced
+#>
+Function Set-DynamicText
+{
+    [CmdletBinding()]
+    Param (	[Parameter(Mandatory=$true,Position=0)][string]$Text,
+			[Parameter(Mandatory=$true,Position=1)][Collections.Hashtable]$DynamicValues,
+			[Parameter(Mandatory=$false,Position=2)][string]$VariableIdentifier="$",
+			[Parameter(Mandatory=$false,Position=3)][string]$VariableBracket="()" )
+
+    Write-LogDebug "Start Set-DynamicText"
+
+    try
+    {
+		if ($VariableBracket)
+		{
+			$variableBracketLeft = $VariableBracket.Substring(0,1)
+			$variableBracketRight = $VariableBracket.Substring(1,1)
+		}
+		else
+		{
+			$variableBracketLeft = [string]::Empty
+			$variableBracketRight = [string]::Empty
+		}
+
+		foreach ($keyName in $DynamicValues.Keys)
+		{
+			$value = $DynamicValues.$keyName
+			$variable = "$($variableBracketLeft)$($VariableIdentifier)$($keyName)$($variableBracketRight)"
+
+			$Text = $Text -replace [System.Text.RegularExpressions.Regex]::Escape($variable), $value
+		}
+
+	    # trace Success
+	    Write-LogDebug "Success Set-DynamicText"
+    }
+    catch
+    {
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+	
+	return $Text
+}
+
+
+<#
+.Synopsis
 Convert string to secure string
 
 .Description
@@ -1969,7 +2306,7 @@ Function Get-HttpFile
 		New-Item -Path $FileDestination -Type "file" -Force
 		
         # set webclient, download file, dispose webClient
-        $webclient = New-Object System.Net.WebClient						
+        $webclient = Net.WebClient						
         $webclient.DownloadFile($FileSource, $FileDestination)
         $webclient.Dispose()
 
@@ -2209,7 +2546,7 @@ Function Write-ObjectToHtml
 
 			        foreach ($propertyName in $propertiesName)
 			        {
-                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
+                        if ($EncodeHtml) { $propertyValue = $([Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
 
                         $htmlTable += "<td$($TdClass)>$propertyValue</td>"
 			        }
@@ -2220,7 +2557,7 @@ Function Write-ObjectToHtml
                 {
 			        foreach ($propertyName in $propertiesName)
 			        {
-                        if ($EncodeHtml) { $propertyValue = $([System.Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
+                        if ($EncodeHtml) { $propertyValue = $([Web.HttpUtility]::HtmlEncode($entity.$propertyName)) } else { $propertyValue = $entity.$propertyName }
 
                         $htmlTable += "`t<tr$($TrClass)>"
 

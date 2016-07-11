@@ -525,7 +525,7 @@ Object containing TFS projects collection and services on success / null object 
 Function Get-TfsConnection
 {
     [CmdletBinding()]
-    Param (	[Parameter(Mandatory=$true,Position=0)][System.Uri]$TfsCollectionUri )
+    Param (	[Parameter(Mandatory=$true,Position=0)][Uri]$TfsCollectionUri )
 
     Write-LogDebug "Start Get-TfsConnection"
 
