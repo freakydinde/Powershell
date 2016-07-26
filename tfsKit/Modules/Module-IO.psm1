@@ -14,23 +14,23 @@ contain IO fonctionnality : log, xml, IO.
 #region PARAMETERS
 
 # define root folder, this module is meant to be hosted in Root\Modules
-if (!$global:RootFolder) { $global:RootFolder = (Split-Path $PSScriptRoot) }
+if (!$Global:RootFolder) { $Global:RootFolder = (Split-Path $PSScriptRoot) }
 
 # create Logs folder if it does not exists
-if (!(Test-Path ([IO.Path]::Combine($global:RootFolder, "Logs")))) { New-Item ([IO.Path]::Combine($global:RootFolder, "Logs")) -ItemType Directory -Force | Out-Null }
+if (!(Test-Path ([IO.Path]::Combine($Global:RootFolder, "Logs")))) { New-Item ([IO.Path]::Combine($Global:RootFolder, "Logs")) -ItemType Directory -Force | Out-Null }
 
 # define global variables for each kit folders
-Get-ChildItem $global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)Folder" -Value ([IO.Path]::Combine($global:RootFolder, $_.Name)) -Scope Global }
+Get-ChildItem $Global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)Folder" -Value ([IO.Path]::Combine($Global:RootFolder, $_.Name)) -Scope Global }
 
 # define log file if not set
-if (!$global:LogFile) { $global:LogFile = [IO.Path]::Combine($global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
+if (!$Global:LogFile) { $Global:LogFile = [IO.Path]::Combine($Global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
 
 # if exist, add scripts folder to session path
-if ($global:ScriptsFolder) { $env:path = "$env:path;$global:ScriptsFolder" }
+if ($Global:ScriptsFolder) { $env:path = "$env:path;$Global:ScriptsFolder" }
 
 # variables used to get Write-LogError trace history
-$global:TraceBuffer = [string]::Empty
-$global:ErrorId = [string]::Empty
+$Global:TraceBuffer = [string]::Empty
+$Global:ErrorId = [string]::Empty
 
 # Write-ObjectToHtml use HtmlEncode static method from System.Web.HttpUtility class
 Add-Type -Assembly System.Web
@@ -280,34 +280,34 @@ Function Set-LogLevel
 		{
 			"Host"
 			{
-				$global:ErrorActionPreference = "Stop"
-				$global:WarningPreference = "Continue"
-				$global:VerbosePreference = "SilentlyContinue"
-				$global:DebugPreference = "SilentlyContinue"
+				$Global:ErrorActionPreference = "Stop"
+				$Global:WarningPreference = "Continue"
+				$Global:VerbosePreference = "SilentlyContinue"
+				$Global:DebugPreference = "SilentlyContinue"
 				Set-PSDebug -Trace 0
 			}
 			"Verbose"
 			{
-				$global:ErrorActionPreference = "Stop"
-				$global:WarningPreference = "Continue"
-				$global:VerbosePreference = "Continue"
-				$global:DebugPreference = "SilentlyContinue"
+				$Global:ErrorActionPreference = "Stop"
+				$Global:WarningPreference = "Continue"
+				$Global:VerbosePreference = "Continue"
+				$Global:DebugPreference = "SilentlyContinue"
 				Set-PSDebug -Trace 0
 			}
 			"Debug"
 			{
-				$global:ErrorActionPreference = "Stop"
-				$global:WarningPreference = "Continue"
-				$global:VerbosePreference = "Continue"
-				$global:DebugPreference = "Continue"
+				$Global:ErrorActionPreference = "Stop"
+				$Global:WarningPreference = "Continue"
+				$Global:VerbosePreference = "Continue"
+				$Global:DebugPreference = "Continue"
 				Set-PSDebug -Trace 0
 			}
 			"Trace"
 			{
-				$global:ErrorActionPreference = "Stop"
-				$global:WarningPreference = "Continue"
-				$global:VerbosePreference = "Continue"
-				$global:DebugPreference = "Continue"
+				$Global:ErrorActionPreference = "Stop"
+				$Global:WarningPreference = "Continue"
+				$Global:VerbosePreference = "Continue"
+				$Global:DebugPreference = "Continue"
 				Set-PSDebug -Trace 1
 			}
 		}
@@ -357,11 +357,11 @@ Function Write-LogDebug
 
 	try
 	{
-		if ($global:DebugPreference -ne "SilentlyContinue")
+		if ($Global:DebugPreference -ne "SilentlyContinue")
 		{
 			$toWrite = Format-Message "$($Message) -Time $(Get-Date -Format 'HH.mm.ss.fff')" $Title $LineBefore $LineAfter $LineAfterTitle
 
-			Add-Content $toWrite -Path $global:LogFile
+			Add-Content $toWrite -Path $Global:LogFile
 			Write-Debug $toWrite
 		}
 	}
@@ -404,17 +404,17 @@ Function Write-LogError
 			[Parameter(Mandatory=$false,Position=2)][string]$Title,
 			[Parameter(Mandatory=$false,Position=3)][switch]$LineAfterTitle )
 
-	if ($global:ErrorActionPreference -ne "SilentlyContinue")
+	if ($Global:ErrorActionPreference -ne "SilentlyContinue")
 	{
 		$source = Split-Path $InvocationInfo.ScriptName -leaf
 
-		if ($Exception.Message.Length -gt 33 -and $Exception.Message.Substring(0,33) -eq $global:ErrorId)
+		if ($Exception.Message.Length -gt 33 -and $Exception.Message.Substring(0,33) -eq $Global:ErrorId)
 		{
-			$traceText = "$global:TraceBuffer -Line $($InvocationInfo.ScriptLineNumber)"
+			$traceText = "$Global:TraceBuffer -Line $($InvocationInfo.ScriptLineNumber)"
 
-			$global:TraceBuffer = "-Trace $source"
+			$Global:TraceBuffer = "-Trace $source"
 
-			Add-Content $traceText -Path $global:LogFile
+			Add-Content $traceText -Path $Global:LogFile
 			Write-Error "$($Exception.Message)$([Environment]::NewLine)$($traceText)$([Environment]::NewLine)"
 		}
 		else
@@ -435,10 +435,10 @@ Function Write-LogError
 
 			$text += Format-Message $message $Title $false $false $LineAfterTitle
 
-			$global:ErrorId = $text.Substring(0,33)
-			$global:TraceBuffer = "-Trace $source"
+			$Global:ErrorId = $text.Substring(0,33)
+			$Global:TraceBuffer = "-Trace $source"
 
-			Add-Content $text -Path $global:LogFile
+			Add-Content $text -Path $Global:LogFile
 			Write-Error "$text"
 		}
 	}
@@ -485,8 +485,8 @@ Function Write-LogEvent
 			[Parameter(Mandatory=$false,Position=1)][string]$Type="Information",
 			[Parameter(Mandatory=$false,Position=2)][string]$Source="tfsKit",
 			[Parameter(Mandatory=$false,Position=3)][string]$LogName="IO",
-			[Parameter(Mandatory=$false,Position=5)][int]$EventID=0,
-			[Parameter(Mandatory=$false,Position=4)][string]$ComputerName="localhost" )
+			[Parameter(Mandatory=$false,Position=4)][int]$EventID=0,
+			[Parameter(Mandatory=$false,Position=5)][string]$ComputerName="localhost" )
 
 	try
 	{
@@ -565,7 +565,7 @@ Function Write-LogHost
 	{
 		$toWrite = Format-Message $Message $Title $LineBefore $LineAfter $LineAfterTitle
 
-		Add-Content $toWrite -Path $global:LogFile
+		Add-Content $toWrite -Path $Global:LogFile
 		
 		if (!$ForeColor -and !$BackColor)
 		{
@@ -714,11 +714,11 @@ Function Write-LogVerbose
 
 	try
 	{
-		if ($global:VerbosePreference -ne "SilentlyContinue")
+		if ($Global:VerbosePreference -ne "SilentlyContinue")
 		{
 			$toWrite = Format-Message $Message $Title $LineBefore $LineAfter $LineAfterTitle
 
-			Add-Content $toWrite -Path $global:LogFile
+			Add-Content $toWrite -Path $Global:LogFile
 			Write-Verbose $toWrite
 		}
 	}
@@ -767,11 +767,11 @@ Function Write-LogWarning
 
 	try
 	{
-		if ($global:WarningPreference -ne "SilentlyContinue")
+		if ($Global:WarningPreference -ne "SilentlyContinue")
 		{
 			$toWrite = Format-Message $Message $Title $LineBefore $LineAfter $LineAfterTitle
 
-			Add-Content $toWrite -Path $global:LogFile
+			Add-Content $toWrite -Path $Global:LogFile
 			Write-Warning $toWrite
 		}
 	}
@@ -793,7 +793,6 @@ Return xml data from file
 .Description
 Read xml from file path and return Xml.XmlDocument
 
-
 .Parameter File
 File name without extension and folder, or file full path
 
@@ -807,14 +806,13 @@ Function Get-Data
 {
     [CmdletBinding()]
     Param (	[Parameter(Mandatory=$true,Position=0)][string]$File,
-			[Parameter(Mandatory=$false,Position=1)][string]$Folder=$global:DataFolder,
-			[Parameter(Mandatory=$false,Position=2)][switch]$IsFullPath )
+			[Parameter(Mandatory=$false,Position=1)][string]$Folder=$Global:DataFolder )
 
     Write-LogDebug "Start Get-Data"
 
     try
     {
-        Write-LogVerbose "reading $File data file"
+		Write-LogVerbose "reading $File data file"
 	
         if ($File.EndsWith(".xml") -or $File.EndsWith(".config") -or $File.EndsWith(".dtsConfig"))
         {
@@ -919,6 +917,160 @@ Function Get-XPathValue
     return $returnValue
 }
 
+<# 
+.Synopsis
+create xml file
+ 
+.Description
+create xml file using Xml.XmlTextWriter
+
+.Parameter OutputFile
+output full path
+
+.Parameter ElementsTrees
+array containing elements tree
+
+.Parameter Encoding
+text encoding
+
+.Parameter Formatting
+Indicates how the output is formatted.
+
+.Parameter Indentation
+Gets or sets how many IndentChars to write for each level in the hierarchy when Formatting is set to Indented
+
+.Parameter IndentChar
+Gets or sets which character to use for indenting when Formatting is set to Indented
+
+.Example
+New-XmlFile
+ 
+.Outputs
+true on success / false on fail
+#> 
+Function New-XmlFile
+{
+    [CmdletBinding()]
+    Param ( [Parameter(Mandatory=$true,Position=0)][string]$OutputFile,
+			[Parameter(Mandatory=$false,Position=1)][string]$RootElement,
+			[Parameter(Mandatory=$false,Position=2)][array]$ElementsTrees,
+			[Parameter(Mandatory=$false,Position=3)][string]$Encoding="UTF-8",
+			[Parameter(Mandatory=$false,Position=4)][string]$Formatting="Indented",
+			[Parameter(Mandatory=$false,Position=5)][int]$Indentation=1,
+			[Parameter(Mandatory=$false,Position=6)][string]$IndentChar="`t")
+ 
+    Write-LogDebug "Start New-XmlFile"
+ 
+    #initialize return value
+    [bool]$returnValue = $true    
+ 
+    try
+    {
+        Write-LogHost "creating $(Split-Path $OutputFile -leaf) file" -LineBefore
+
+        $xmlWriter = New-Object Xml.XmlTextWriter -ArgumentList @($OutputFile, [Text.Encoding]::GetEncoding($Encoding))
+        $xmlWriter.Formatting = $Formatting
+        $xmlWriter.Indentation = $Indentation
+        $xmlWriter.IndentChar = $IndentChar
+ 
+        $xmlWriter.WriteStartDocument()
+
+		if ($RootElement)
+		{
+			if ($RootElement -match "~@")
+			{
+				$RootElementName = Get-InString $RootElement '~@'
+				$xmlWriter.WriteStartElement($RootElementName)
+
+				$attributes = Get-InString $RootElement '~@' -Right
+
+				foreach ($attribute in $attributes.Split(',@'))
+				{
+					if ($attribute) # split return null element when separator is 2 caracters length
+					{
+						if ($attribute -match '=€')
+						{
+							$attributeName = Get-InString $attribute '=€'
+							$attributeValue = Get-InString $attribute '=€' -Right
+								
+							$xmlWriter.WriteAttributeString($attributeName, $attributeValue)
+						}
+						else
+						{
+							$xmlWriter.WriteAttributeString($attribute, "")
+						}						
+					}
+				}   
+			}
+			else
+			{
+				$xmlWriter.WriteStartElement($RootElement)
+			}
+		}
+
+		foreach ($elementsTree in $ElementsTrees)
+		{
+			foreach ($element in $elementsTree.Split(';'))
+			{
+				if ($element -match "~@")
+				{
+					$elementName = Get-InString $element '~@'
+					$xmlWriter.WriteStartElement($elementName)
+
+					$attributes = Get-InString $element '~@' -Right
+
+					foreach ($attribute in $attributes.Split(',@'))
+                    {
+						if ($attribute) # split return null element when separator is 2 caracters length
+						{
+							if ($attribute -match '=€')
+							{
+								$attributeName = Get-InString $attribute '=€'
+								$attributeValue = Get-InString $attribute '=€' -Right
+									
+								$xmlWriter.WriteAttributeString($attributeName, $attributeValue)
+							}
+							else
+							{
+								$xmlWriter.WriteAttributeString($attribute, "")
+							}						
+						}
+                    }   
+				}
+				else
+				{
+					$xmlWriter.WriteStartElement($element)
+				}		
+			}
+
+			foreach ($element in $elementsTree.Split(';'))
+			{
+				$xmlWriter.WriteEndElement()
+			}
+		}
+
+		if ($RootElement)
+		{
+			$xmlWriter.WriteEndElement()
+		}
+ 
+        $xmlWriter.WriteEndDocument()
+        $xmlWriter.Flush()
+        $xmlWriter.Close() 
+ 
+	    # trace Success
+	    Write-LogDebug "Success New-XmlFile"
+    }
+    catch
+    {
+        # log Error 
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+        $returnValue = $false
+    }
+ 
+    return $returnValue
+} 
+
 <#
 .Synopsis
 Set Xml element or attribute value
@@ -939,7 +1091,7 @@ Value to Set \ Add \ Replace
 Edition type : setValue, add, remove, replace, comment, unComment
 
 .Parameter addMode
-Insertion mode , insert Value before or after Xpath
+Insertion mode, insert Value before xpath, after Xpath, in xpath (nested in elements), tree (addElements as childs)
 
 .Example
 Set-XPathValue "C:\example.xml" "/system.web/authentication/@mode" "true"
@@ -956,13 +1108,17 @@ Function Set-XPathValue
     Param (	[Parameter(Mandatory=$true,Position=0)][object]$Source,
 			[Parameter(Mandatory=$true,Position=1)][string]$XPath,
 			[Parameter(Mandatory=$false,Position=2)][AllowNull()][string]$Value,
-			[Parameter(Mandatory=$false,Position=3)][AllowNull()][ValidateSet("","setValue", "add", "remove", "replace", "comment", "unComment")][string]$Type="setValue",
-			[Parameter(Mandatory=$false,Position=4)][AllowNull()][ValidateSet("","before", "after", "in")][string]$AddMode="in")
+			[Parameter(Mandatory=$false,Position=3)][AllowNull()][ValidateSet("","setValue","setAttributes","add","addElements","remove","replace","comment","unComment")][string]$Type,
+			[Parameter(Mandatory=$false,Position=4)][AllowNull()][ValidateSet("","in","before","after","tree","treeBefore","treeAfter")][string]$AddMode )
 
     Write-LogDebug "Start Set-XPathValue"
-
+	
     try
-    {
+    {	
+		# assign Type and AddMode default values
+		if (!$Type) { $Type = "setValue" }
+		if (!$AddMode) { $AddMode = "in" }
+	
         switch ($Type)
         {
             "setValue"
@@ -971,7 +1127,11 @@ Function Set-XPathValue
             }
             "add"
             {
-                $message = "to add $Value $AddMode on $XPath"
+                $message = "to add $Value $AddMode $XPath"
+            }
+			"addElements"
+            {
+				$message = "to add { $($Value.Split(';')) } elements $AddMode $XPath"
             }
             "remove"
             {
@@ -980,6 +1140,10 @@ Function Set-XPathValue
             "replace"
             {
                 $message = "to replace $XPath with $Value"
+            }
+            "setAttributes"
+            {
+                $message = "to set { $(($Value -replace '=€', '=').Split(';')) } attributes on $XPath"
             }
             "comment"
             {
@@ -990,13 +1154,13 @@ Function Set-XPathValue
                 $message = "to uncomment $XPath"
             }
         }
-
+		
 		# get xml
 		if ($Source -is [string])
 		{
 			Write-LogVerbose "editing Source $Source $message"
 			
-			$xmlElements = Get-Data $Source
+			$xmlElements = Get-Data $Source -Verbose:$false
 		}
 		elseif ($Source -is [Xml.XmlNode])
 		{
@@ -1023,14 +1187,12 @@ Function Set-XPathValue
 		{
 			Throw "Element referenced under $XPath does not exist"
 		}
-
+				
 		# process node operations
 		switch ($Type)
 		{
 			"add"
 			{
-				Write-LogVerbose "add $Value to $XPath"
-
 				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $Value
 
@@ -1051,25 +1213,134 @@ Function Set-XPathValue
 					Throw "add mode does not exist"
 				}
 			}
+			"addElements"
+			{
+				# element are separated by ; in elements array string
+                # a single element can contains an attributes array separated by ~@
+                # attributes are separated by ,@ in attributes array string
+                # a single attribute can contains a value separated by =€	
+                # exemple "elementOne~@attribute=€valueA1,@attribute2=€valueA2,@attribute3;elementTwo~@attribut1;elementThree"
+
+                $currentNode = $xmlElements.CreateElement("myFirstNode")
+                $currentNodeXPath = [string]::Empty
+				
+				foreach ($element in $Value.Split(';'))
+				{
+                    if ($element -match '~@')
+                    {
+                        $elementName = Get-InString $element '~@'
+                        $attributes = Get-InString $element '~@' -Right
+                        						
+                        $elementNode = $xmlElements.CreateElement($elementName)
+						
+                        foreach ($attribute in $attributes.Split(',@'))
+                        {
+							if ($attribute) # split return null element when separator is 2 caracters length
+							{
+								if ($attribute -match '=€')
+								{
+									$attributeName = Get-InString $attribute '=€'
+									$attributeValue = Get-InString $attribute '=€' -Right
+									
+									$xmlAttribute = $xmlElements.CreateAttribute($attributeName)
+									$xmlAttribute.Value = $attributeValue    
+								}
+								else
+								{
+									$xmlAttribute = $xmlElements.CreateAttribute($attribute)
+								}
+								
+								$elementNode.SetAttributeNode($xmlAttribute)							
+							}
+                        }      
+                    }
+                    else
+                    {
+                        $elementName = $element
+                        $elementNode = $xmlElements.CreateElement($elementName)
+                    }
+					
+					if ($currentNodeXPath)
+					{
+						$currentNode.SelectSingleNode($currentNodeXPath).AppendChild($elementNode)
+					}
+					else
+					{
+						$currentNode.AppendChild($elementNode)
+					}
+					
+                    if ($AddMode -eq "tree" -or $AddMode -eq "treeBefore" -or $AddMode -eq "treeAfter")
+                    {
+                        $currentNodeXPath = "$currentNodeXPath/$elementName"
+                    }            
+				}
+				
+				foreach ($nodeToAdd in $currentNode.SelectNodes("/*"))
+				{
+					if ($AddMode -eq "in" -or $AddMode -eq "tree")
+					{
+						$xmlNode.AppendChild($nodeToAdd)
+					}
+					elseif ($AddMode -eq "after" -or $AddMode -eq "treeAfter")
+					{
+						$xmlNode.ParentNode.InsertAfter($nodeToAdd, $xmlNode)
+					}
+					elseif ($AddMode -eq "before" -or $AddMode -eq "treeBefore")
+					{
+						$xmlNode.ParentNode.InsertBefore($nodeToAdd, $xmlNode)
+					}
+					else
+					{
+						Throw "add mode does not exist"
+					}
+				}
+			}
 			"remove"
 			{
-				Write-LogVerbose "remove $XPath"
-
 				$xmlNode.ParentNode.RemoveChild($xmlNode)
 			}
 			"replace"
 			{
-				Write-LogVerbose "replace $XPath with $Value"
-
 				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $Value
 
 				$xmlNode.ParentNode.ReplaceChild($tempNode.FirstChild, $xmlNode)
 			}
-			"setValue"
+			"setAttributes"
 			{
-				Write-LogVerbose "setting $XPath to $Value"
-                
+                # attributes are separated by ; in attributes array string
+                # an attribute can contains value separated by =€	
+                # exemple "attribute1=€valueA1;attribute2;attribute3=€valueA3"
+                                
+                foreach ($attribute in $Value.Split(';'))
+                {
+                    if ($attribute -match '=€')
+                    {    
+                        $attributeName = Get-InString $attribute '=€'
+                        $attributeValue = Get-InString $attribute '=€' -Right
+
+                        $attributePath = "/@$($attributeName)"
+
+                        $xmlAttribute = $xmlElements.CreateAttribute($attributeName)
+                        $xmlAttribute.Value = $attributeValue     
+                    }
+                    else
+                    {
+                        $attributePath = "/@$($attribute)"
+
+                        $xmlAttribute = $xmlElements.CreateAttribute($attribute)
+                    }
+
+                    $docAttribute = $xmlNode.SelectSingleNode($attributePath)
+
+                    if (!$docAttribute)
+                    {
+                        $xmlNode.SetAttributeNode($xmlAttribute) 
+                    }
+                }
+			}
+			"setValue"
+			{                
                 if ($xmlNode -is [Xml.XmlAttribute])
                 {
                     $xmlNode.Value = $Value
@@ -1081,15 +1352,11 @@ Function Set-XPathValue
 			}
 			"comment"
 			{
-				Write-LogVerbose "comment $XPath"
-
 				$xmlComment = $xmlElements.CreateComment($xmlNode.OuterXml)
 				$xmlNode.ParentNode.ReplaceChild($xmlComment, $xmlNode)
 			}
 			"unComment"
 			{
-				Write-LogVerbose "unComment $XPath"
-
 				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $xmlNode.Value
 
@@ -1192,7 +1459,7 @@ Function Set-XPathSettings
 
                     if ($condition.verb -eq "exists" -or $condition.verb -eq "notExists")
                     {
-                        $xpathExists = Test-XPath $editionFile $condition.xpath
+                        $xpathExists = Test-XPath $editionFile $condition.xpath -Verbose:$false
 
                         if (($xpathExists -and $condition.verb -eq "Exists") -or (!$xpathExists -and $condition.verb -eq "NotExists"))
                         {
@@ -1207,7 +1474,7 @@ Function Set-XPathSettings
                     }
                     elseif ($condition.verb -eq "isValue" -or $condition.verb -eq "isNotValue")
                     {
-                        $xpathValue = Get-XPathValue $editionFile $condition.xpath
+                        $xpathValue = Get-XPathValue $editionFile $condition.xpath -Verbose:$false
 
                         if (($xpathValue -eq $condition.value -and $condition.verb -eq "isValue") -or ($xpathValue -ne $condition.value -and $condition.verb -eq "isNotValue"))
                         {
@@ -1237,22 +1504,22 @@ Function Set-XPathSettings
                     {
                         $editionType = [string]$parameter.type
 
-                        if ($editionType -eq "add")
+                        if ($editionType -match "add")
                         {
                             if ($parameter.addMode)
                             {
                                 $addMode = [string]$parameter.addMode
                             }
-                            else
-                            {
-                                $addMode = "in"
-                            }
+							else
+							{
+								$addMode = $null
+							}
                         }
                     }
-                    else
-                    {
-                        $editionType = "setValue"
-                    }
+					else
+					{
+						$editionType = $null
+					}
 
                     if ($parameter.value)
                     {
@@ -1274,7 +1541,7 @@ Function Set-XPathSettings
 
                     try
                     {
-                        Set-XPathValue $editionFile $xpath -Value $value -Type $editionType -AddMode $addMode | Out-Null              
+                        Set-XPathValue $editionFile $xpath $value $editionType $addMode | Out-Null              
                     }
                     catch
                     {
@@ -1335,7 +1602,7 @@ Function Test-XPath
 		# get xml
 		if ($Source -is [string])
 		{
-			$xmlElements = Get-Data $Source
+			$xmlElements = Get-Data $Source -Verbose:$false
 		}
 		elseif ($Source -is [Xml.XmlNode])
 		{
@@ -1486,7 +1753,7 @@ Function Add-Assemblies
 				$assemblyName = "Microsoft.$name.dll"
 			}
 
-            $assemblyPath = [IO.Path]::Combine($global:AssembliesFolder, $assemblyName)
+            $assemblyPath = [IO.Path]::Combine($Global:AssembliesFolder, $assemblyName)
 			
 			Write-LogVerbose "Add-Type -Path $assemblyPath"
             Add-Type -Path $assemblyPath
@@ -1535,7 +1802,7 @@ Function Add-Modules
             {
 				if (!$Assert -or !(Get-Module -Name "Module-$shortName"))
 				{
-					$modulePath = [IO.Path]::Combine($global:ModulesFolder, "Module-$shortName.psm1")
+					$modulePath = [IO.Path]::Combine($Global:ModulesFolder, "Module-$shortName.psm1")
 					Import-Module $modulePath -Force -Global
 				}
             }
@@ -1544,11 +1811,11 @@ Function Add-Modules
         {
 			if ($Assert)
 			{
-				Get-ChildItem ($global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
+				Get-ChildItem ($Global:ModulesFolder) | ? {!(Get-Module -Name $_.BaseName)} | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
 			}
 			else
 			{
-				Get-ChildItem ($global:ModulesFolder) | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
+				Get-ChildItem ($Global:ModulesFolder) | % { Write-LogVerbose "Import-Module -Name $_.FullName -Force -Global"; Import-Module -Name $_.FullName -Force -Global }
 			}
         }
 
@@ -1697,7 +1964,7 @@ Function Copy-Robocopy
 			$argumentsList = "`"$Source`" `"$Destination`" $Files $Options"
 		}
 
-		Write-LogVerbose "robocopy arguments list : $argumentsList"
+		Write-LogVerbose "robocopy $argumentsList"
 
 		# launch robocopy process
 		$copyProcess = Start-Process robocopy -ArgumentList $argumentsList -PassThru -Wait -WindowStyle Hidden
@@ -1834,7 +2101,7 @@ Function Get-InString
 
 				if ($Right)
 				{
-					$returnValue = $InString.substring($index + 1, ($InString.Length - $index - 1))
+					$returnValue = $InString.substring($index + $Delimiter.Length, ($InString.Length - $index - $Delimiter.Length))
 				}
 				else
 				{
@@ -1976,7 +2243,7 @@ Function Get-Prompt
 		}
 		else
 		{
-			result = $false
+			$result = $false
 		}
 		
 		# trace Success
@@ -2093,7 +2360,7 @@ Function Get-TempFolder
 	
 	try
 	{
-		$tempFolder = [IO.Path]::Combine($global:RootFolder, "Temp$(Get-Date -Format yyyyMMddHHmmssfff)")
+		$tempFolder = [IO.Path]::Combine($Global:RootFolder, "Temp$(Get-Date -Format yyyyMMddHHmmssfff)")
         
         Write-LogVerbose "asserting temp folder : $tempFolder"
 
