@@ -67,18 +67,26 @@ try
 
 	foreach ($tfsBuild in $tfsBuilds)
 	{
-		$tfsBuildName = $tfsBuild.name
-
-		Write-LogHost "Querying $tfsBuildName"
-		
 		# get quality indicator treshold from BuildInfos.xml
 		$codeAnalysisWarningsThreshold = [int]$tfsBuild.CodeAnalysisThreshold
 		$codeCoverageWarningsThreshold = [int]$tfsBuild.CodeCoverageThreshold
         $compilationWarningsThreshold = [int]$tfsBuild.CompilationThreshold
-
-		# get build data (long time operation)
-		$buildstatusExclusion = @("InProgress","NotStarted","Stopped")
-        $build = Get-TfsLastBuildDetails $tfsCollectionUri $tfsProjectName $tfsBuildName $buildstatusExclusion $Language -FullDetails -RecentBuild
+		
+		if ($tfsBuild.number)
+		{
+			Write-LogHost "Querying $tfsBuild.number"
+					
+			# get build data
+			$build = Get-TfsBuildDetails $tfsCollectionUri $tfsProjectName $tfsBuild.number $Language -FullDetails
+		}
+		elseif ($tfsBuild.name)
+		{
+			Write-LogHost "Querying $tfsBuild.name"
+					
+			# get build data
+			$buildstatusExclusion = @("InProgress","NotStarted","Stopped")
+			$build = Get-TfsLastBuildDetails $tfsCollectionUri $tfsProjectName $tfsBuild.name $buildstatusExclusion $Language -FullDetails -RecentBuild		
+		}
 
 		Write-LogVerbose "Formating data from build $($build.BuildNumber)"
 
@@ -92,7 +100,7 @@ try
 		$testCompletedCount = [int]($build.UnitTestsInfo.Details | ? { $_.Outcome -eq "Passed" }).Count
 		$codeCoverage = [int]$build.CodeCoverageInfo.Summary.Coverage
 		
-        if ($testTotalCount -gt 0) { $testCompletedPercentage = [Math]::Round(100 - (100 * ($testTotalCount - $testCompletedCount) / $testTotalCount),2) }
+        if ($testTotalCount -gt 0) { $testCompletedPercentage = Get-Percentage $testCompletedCount $testTotalCount }
         else { $testCompletedPercentage = 0 }
 
         # format monitored values into red or green div depending on treshold values
@@ -247,7 +255,7 @@ try
 		Write-LogVerbose "Getting email configuration"
 
 		# get email credentials
-        $emailCredentialsPath = [IO.Path]::Combine($global:DataFolder, "Credentials", "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
+        $emailCredentialsPath = [IO.Path]::Combine($Global:DataFolder, "Credentials", "mail@$($env:USERNAME)@$($env:COMPUTERNAME).clixml")
 		if (Test-Path $emailCredentialsPath) { $emailCredentials = Import-Clixml $emailCredentialsPath }
 		else { Throw "credentials missing, email won't be send" }
         

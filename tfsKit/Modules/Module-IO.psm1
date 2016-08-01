@@ -20,7 +20,7 @@ if (!$Global:RootFolder) { $Global:RootFolder = (Split-Path $PSScriptRoot) }
 if (!(Test-Path ([IO.Path]::Combine($Global:RootFolder, "Logs")))) { New-Item ([IO.Path]::Combine($Global:RootFolder, "Logs")) -ItemType Directory -Force | Out-Null }
 
 # define global variables for each kit folders
-Get-ChildItem $Global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)Folder" -Value ([IO.Path]::Combine($Global:RootFolder, $_.Name)) -Scope Global }
+Get-ChildItem $Global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)Folder" -Value ([IO.Path]::Combine($Global:RootFolder, $_.Name)) -Scope Global -ErrorAction SilentlyContinue }
 
 # define log file if not set
 if (!$Global:LogFile) { $Global:LogFile = [IO.Path]::Combine($Global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
@@ -988,10 +988,10 @@ Function New-XmlFile
 				{
 					if ($attribute) # split return null element when separator is 2 caracters length
 					{
-						if ($attribute -match '=€')
+						if ($attribute -match '~=')
 						{
-							$attributeName = Get-InString $attribute '=€'
-							$attributeValue = Get-InString $attribute '=€' -Right
+							$attributeName = Get-InString $attribute '~='
+							$attributeValue = Get-InString $attribute '~=' -Right
 								
 							$xmlWriter.WriteAttributeString($attributeName, $attributeValue)
 						}
@@ -1023,10 +1023,10 @@ Function New-XmlFile
                     {
 						if ($attribute) # split return null element when separator is 2 caracters length
 						{
-							if ($attribute -match '=€')
+							if ($attribute -match '~=')
 							{
-								$attributeName = Get-InString $attribute '=€'
-								$attributeValue = Get-InString $attribute '=€' -Right
+								$attributeName = Get-InString $attribute '~='
+								$attributeValue = Get-InString $attribute '~=' -Right
 									
 								$xmlWriter.WriteAttributeString($attributeName, $attributeValue)
 							}
@@ -1143,7 +1143,7 @@ Function Set-XPathValue
             }
             "setAttributes"
             {
-                $message = "to set { $(($Value -replace '=€', '=').Split(';')) } attributes on $XPath"
+                $message = "to set { $(($Value -replace '~=', '=').Split(';')) } attributes on $XPath"
             }
             "comment"
             {
@@ -1218,8 +1218,8 @@ Function Set-XPathValue
 				# element are separated by ; in elements array string
                 # a single element can contains an attributes array separated by ~@
                 # attributes are separated by ,@ in attributes array string
-                # a single attribute can contains a value separated by =€	
-                # exemple "elementOne~@attribute=€valueA1,@attribute2=€valueA2,@attribute3;elementTwo~@attribut1;elementThree"
+                # a single attribute can contains a value separated by ~=	
+                # exemple "elementOne~@attribute~=valueA1,@attribute2~=valueA2,@attribute3;elementTwo~@attribut1;elementThree"
 
                 $currentNode = $xmlElements.CreateElement("myFirstNode")
                 $currentNodeXPath = [string]::Empty
@@ -1237,10 +1237,10 @@ Function Set-XPathValue
                         {
 							if ($attribute) # split return null element when separator is 2 caracters length
 							{
-								if ($attribute -match '=€')
+								if ($attribute -match '~=')
 								{
-									$attributeName = Get-InString $attribute '=€'
-									$attributeValue = Get-InString $attribute '=€' -Right
+									$attributeName = Get-InString $attribute '~='
+									$attributeValue = Get-InString $attribute '~=' -Right
 									
 									$xmlAttribute = $xmlElements.CreateAttribute($attributeName)
 									$xmlAttribute.Value = $attributeValue    
@@ -1309,15 +1309,15 @@ Function Set-XPathValue
 			"setAttributes"
 			{
                 # attributes are separated by ; in attributes array string
-                # an attribute can contains value separated by =€	
-                # exemple "attribute1=€valueA1;attribute2;attribute3=€valueA3"
+                # an attribute can contains value separated by ~=	
+                # exemple "attribute1~=valueA1;attribute2;attribute3~=valueA3"
                                 
                 foreach ($attribute in $Value.Split(';'))
                 {
-                    if ($attribute -match '=€')
+                    if ($attribute -match '~=')
                     {    
-                        $attributeName = Get-InString $attribute '=€'
-                        $attributeValue = Get-InString $attribute '=€' -Right
+                        $attributeName = Get-InString $attribute '~='
+                        $attributeValue = Get-InString $attribute '~=' -Right
 
                         $attributePath = "/@$($attributeName)"
 
@@ -1369,7 +1369,7 @@ Function Set-XPathValue
 		{
 			$xmlElements.Save($Source)
 			
-			[boolean]$returnValue = $true
+			[bool]$returnValue = $true
 		}
 		elseif ($Source -is [Xml.XmlNode])
 		{
@@ -1381,7 +1381,7 @@ Function Set-XPathValue
     }
     catch
     {
-        [boolean]$returnValue = $false
+        [bool]$returnValue = $false
 
         # log Error
         Write-LogError $($_.Exception) $($_.InvocationInfo)
@@ -2149,6 +2149,9 @@ number of processed elements
 .Parameters Total
 number of total elements
 
+.Parameters Decimal
+number of decimal [Math]::Round function return
+
 .Parameters String
 switch, set to true if you want the result as string
 
@@ -2160,16 +2163,17 @@ Function Get-Percentage
 	[CmdletBinding()]
 	Param ( [Parameter(Mandatory=$true,Position=0)][double]$Processed, 
 			[Parameter(Mandatory=$true,Position=1)][double]$Total,
-			[Parameter(Mandatory=$false,Position=2)][switch]$String	)
+			[Parameter(Mandatory=$false,Position=2)][byte]$Decimal=2,
+			[Parameter(Mandatory=$false,Position=3)][switch]$String	)
 			
 
 	Write-LogDebug "Start Get-Percentage"
 
 	try
 	{
-		if (Total -ge Processed)
+		if ($Total -ge $Processed)
 		{
-			$result = [Math]::Round(100 - (100 * ($Total - $Processed) / $Total),2)
+			$result = [Math]::Round(100 - (100 * ($Total - $Processed) / $Total),$Decimal)
 		}
 		else
 		{
@@ -2235,7 +2239,7 @@ Function Get-Prompt
 		$no = New-Object Management.Automation.Host.ChoiceDescription -ArgumentList @("&No", $NoCaption)
 		$options = [Management.Automation.Host.ChoiceDescription[]]($yes, $no)
 
-		$confirmationChoice = $host.ui.PromptForChoice($Title, $Message, $options, 0)
+		$confirmationChoice = $host.ui.PromptForChoice("$Title`r`n`t", "$Message`r`n`t", $options, 0)
 
 		if ($confirmationChoice -eq 0)
 		{

@@ -13,7 +13,7 @@ contain method that perform operation on TFS projects collection, get builds dat
 
 #region <MODULE PARAMETERS>
 
-# import Input\Output module : helper for logging, $global variables, IO and xml (IO module is meant be stored on the same folder than this module : Root\Modules)
+# import Input\Output module : helper for logging, $Global variables, IO and xml (IO module is meant be stored on the same folder than this module : Root\Modules)
 if (!(Get-Module -Name Module-IO)) { Import-Module ([IO.Path]::Combine($PSScriptRoot,"Module-IO.psm1")) }
 
 # import TFS assemblies (Add-Assemblies come from Module-IO, it add Microsoft.$_.dll and load file from Root\Assemblies folder, LoaderException are logged)
@@ -398,7 +398,7 @@ Function Get-TfsCodeCoverageInfo
 			{
 				$moduleTotalLines = $module.Statistics.LinesCovered + $module.Statistics.LinesNotCovered + $module.Statistics.LinesPartiallyCovered
 				$moduleTotalBlocks = $module.Statistics.BlocksNotCovered + $module.Statistics.BlocksCovered
-				$moduleCoverage = [Math]::Round($([double]($module.Statistics.BlocksCovered) / $moduleTotalBlocks * 100),5)
+				$moduleCoverage = Get-Percentage $module.Statistics.BlocksCovered $moduleTotalBlocks 5
                                       
 				$modules += [ordered]@{Module=$module.Name;Coverage=$moduleCoverage;TotalBlocks=$moduleTotalBlocks;BlocksCovered=$module.Statistics.BlocksCovered;BlocksNotCovered=$module.Statistics.BlocksNotCovered;TotalLines=$moduleTotalLines;LinesCovered=$module.Statistics.LinesCovered;LinesPartiallyCovered=$module.Statistics.LinesPartiallyCovered;LinesNotCovered=$module.Statistics.LinesNotCovered}
 			}
@@ -413,7 +413,7 @@ Function Get-TfsCodeCoverageInfo
             
             if ($totalBlocks -gt 0)
             {
-                $coverage = [Math]::Round($([double]$blocksCovered / $totalBlocks * 100),2)
+                $coverage = Get-Percentage $blocksCovered $totalBlocks
             }
             else
             {
