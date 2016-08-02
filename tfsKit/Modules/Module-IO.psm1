@@ -1418,7 +1418,7 @@ Function Set-XPathSettings
     Param 
 	(   [Parameter(Mandatory=$true,Position=0)][object]$Source,
 		[Parameter(Mandatory=$false,Position=1)][Collections.Hashtable]$DynamicValues,
-        [Parameter(Mandatory=$false,Position=2)][AllowEmptyString()][AllowNull()][string]$Folder )
+        [Parameter(Mandatory=$false,Position=2)][AllowEmptyString()][string]$Folder )
 
     Write-LogDebug "Start Set-XPathSettings"
 
@@ -1531,7 +1531,8 @@ Function Set-XPathSettings
                         }
                         else
                         {
-							$DynamicValues.Keys | % { $value = $value -replace "\(\`$$_\)", $($DynamicValues.$_) }
+							# .replace() method is case sensitive, while -replace is not
+							$DynamicValues.Keys | % { $value = $value.Replace("(`$$_)", $($DynamicValues.$_)) }
                         }
                     }
                     else
