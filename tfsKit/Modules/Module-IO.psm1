@@ -1670,7 +1670,7 @@ Function Write-ObjectToXml
 
 		$folder = (Split-Path $Path)
 
-		if (!(Test-Path $folder))
+		if (!(Test-Path $Folder))
 		{
 			New-Item -Path $folder -ItemType Directory -Force
 		}
@@ -1898,7 +1898,7 @@ Function Assert-Folders
     {
         foreach ($folder in $Folders)
         {
-			if (![IO.Directory]::Exists($folder))
+			if (!(Test-Path $folder))
 			{
 				New-Item -Path $folder -ItemType Directory -Force -ErrorAction SilentlyContinue
 			}
