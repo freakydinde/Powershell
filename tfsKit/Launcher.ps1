@@ -7,12 +7,50 @@ launch powershell, set global properties and import modules
     version		   	: 0.04
     author         	: Armand Lacore
 #>
+Param (	[Parameter(Mandatory=$false,Position=0)][string]$LogsFolder,
+		[Parameter(Mandatory=$false,Position=1)][string]$LogFile )
 
-# reload that script with noExit
-if ($args -NotContains "SecondLaunch")
+# reload that script with noExit, as an admin
+if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator") -and !$AdminNoExit)
 {
-	Start-Process PowerShell.exe -ArgumentList "-NoProfile -NoLogo -NoExit -File $($PSScriptRoot)\Launcher.ps1 SecondLaunch" 
-    Exit 0
+	[array]$argumentsList = "-NoProfile", "-NoLogo", "-NoExit", "-File `"$($PSScriptRoot)\Launcher.ps1`""
+	
+	if ($LogsFolder) { $argumentsList += "-LogsFolder `"$LogsFolder`"" }
+	if ($LogFile) { $argumentsList += "-LogFile `"$LogFile`"" }
+	
+	$argumentsList += "-AdminNoExit"
+	
+	Start-Process -File PowerShell.exe -Verb RunAs -ArgumentList $argumentsList
+	Exit 0
+}
+
+# set $LogFile if passed as parameters
+if ($LogFile) 
+{ 
+	$Global:LogFile = $LogFile
+	$Global:LogsFolder = Split-Path $LogFile 
+}
+else
+{
+	# remove $LogFile if empty but existing
+	if (Get-Variable LogFile -ErrorAction SilentlyContinue)
+	{
+		Remove-Variable LogFile -Force
+	}
+
+	# set $LogsFolder if passed as parameters
+	if ($LogsFolder) 
+	{ 
+		$Global:LogsFolder = $LogsFolder 
+	}
+	else
+	{
+		# remove $LogsFolder if empty but existing
+		if (Get-Variable LogsFolder -ErrorAction SilentlyContinue)
+		{
+			Remove-Variable LogsFolder -Force
+		}
+	}
 }
 
 # import Input\Ouput modules

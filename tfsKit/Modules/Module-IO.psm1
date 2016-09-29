@@ -1177,9 +1177,14 @@ Function Set-XPathValue
 		else
 		{
 			$parentXPath = Get-InString $XPath '/' -Last
-			$childXPath = $XPath -replace "$parentXPath/", ''
+			$childXPath = $XPath -replace "$parentXPath/"
 
-			$xmlNode = $xmlElements.SelectNodes("$parentXPath/comment()") | ? { $_.InnerText -match "<$childXPath" }
+			if ($childXPath -match "\[@")
+			{
+				$childXPath = Get-InString $childXPath "='" "']" -Last -SecondLast
+			}
+
+			$xmlNode = $xmlElements.SelectNodes("$parentXPath/comment()") | ? { $_.InnerText -match "$childXPath" }
 		}
 
 		# test node availability
@@ -1360,7 +1365,7 @@ Function Set-XPathValue
 				$tempNode = $xmlElements.CreateElement("tempNode")
 				$tempNode.InnerXml = $xmlNode.Value
 
-				$xmlNode.ParentNode.ReplaceChild($($tempNode.SelectSingleNode("/$childXPath")), $xmlNode)
+				$xmlNode.ParentNode.ReplaceChild($($tempNode.SelectSingleNode("/*")), $xmlNode)
 			}
 		}
 
@@ -1375,6 +1380,8 @@ Function Set-XPathValue
 		{
 			[Xml.XmlNode]$returnValue = $xmlElements
 		}
+
+		Write-LogVerbose "xml node edited with success"
 
 	    # trace Success
 	    Write-LogDebug "Success Set-XPathValue"
@@ -1429,7 +1436,7 @@ Function Set-XPathSettings
 	{
 		if ($Source -is [string])
         {
-            $Settings = (Get-Data $Source).SelectNodes("/*/*")
+            $Settings = (Get-Data $Source).SelectNodes("/*")
 
 			if (!$Folder) {	$Folder = Split-Path $Source }
         }
@@ -1438,7 +1445,7 @@ Function Set-XPathSettings
 			$Settings = $Source
 		}
         
-        foreach ($parameters in $Settings)
+        foreach ($parameters in $Settings.Parameters)
         {
 			if ($Folder)
 			{
@@ -1446,7 +1453,7 @@ Function Set-XPathSettings
 			}
 			else
 			{
-				$editionFile = [string]($parameters.File)
+				$editionFile = [string]($parameters.file)
 			}
 			
             if ($parameters.Condition)
@@ -1539,16 +1546,15 @@ Function Set-XPathSettings
                     {
                         $value = $null
                     }
-
-                    try
-                    {
-                        Set-XPathValue $editionFile $xpath $value $editionType $addMode | Out-Null              
-                    }
-                    catch
-                    {
-                        Write-LogWarning $($_.Exception | Select-Object Message, Source, ErrorCode, InnerException, StackTrace | Format-List | Out-String)
-                        $returnValue = $false
-                    }
+					
+					try
+					{
+						Set-XPathValue $editionFile $xpath $value $editionType $addMode | Out-Null   
+					}
+					catch
+					{
+						Write-Warning $($_.Exception.Message)
+					}
                 }
             }
         }
