@@ -8,7 +8,8 @@ launch powershell, set global properties and import modules
     author         	: Armand Lacore
 #>
 Param (	[Parameter(Mandatory=$false,Position=0)][string]$LogsFolder,
-		[Parameter(Mandatory=$false,Position=1)][string]$LogFile )
+		[Parameter(Mandatory=$false,Position=1)][string]$LogFile,
+		[Parameter(Mandatory=$false,Position=2)][switch]$AdminNoExit )
 
 # reload that script with noExit, as an admin
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator") -and !$AdminNoExit)
