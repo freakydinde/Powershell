@@ -26,7 +26,7 @@ Get-ChildItem $Global:RootFolder -Directory | % { New-Variable -Name "$($_.Name)
 if (!$Global:LogFile) { $Global:LogFile = [IO.Path]::Combine($Global:LogsFolder, "$($env:USERNAME)_$(Get-Date -Format 'yyyy.MM.dd_HH.mm.ss').log") }
 
 # if exist, add scripts folder to session path
-if ($Global:ScriptsFolder) { $env:path = "$env:path;$Global:ScriptsFolder" }
+if ($Global:ScriptsFolder) { $env:path += ";$Global:ScriptsFolder" }
 
 # variables used to get Write-LogError trace history
 $Global:TraceBuffer = [string]::Empty
@@ -785,6 +785,81 @@ Function Write-LogWarning
 #endregion
 
 #region XML
+
+<#
+.Synopsis
+Convert xml node to psobject
+
+.Details
+Convert xml node to psobject using get-member -membertype property though xml elements
+
+.Parameter XmlElement
+Xml elements to convert
+
+.Example
+Convert-XmlToPSObject $xmlElements
+#>
+Function Convert-XmlToPSObject
+{
+    [CmdletBinding()]
+    Param (	[Parameter(Mandatory=$true,Position=0)][Xml.XmlElement]$XmlElement )
+
+	function Convert-Node([Xml.XmlElement]$element)
+	{
+		Write-LogObject $element "element"
+
+		$object = New-Object PSObject
+
+		foreach($child in $($element | Get-Member -MemberType Property))
+		{
+			if ($element.($child.Name) -is [string])
+			{
+				Write-LogObject $child "child"
+
+				Write-Verbose "Add-Member -NotePropertyName $($child.Name) -NotePropertyValue $($child.($child.Name))"
+
+				$object | Add-Member -NotePropertyName $($child.Name) -NotePropertyValue $($child.($child.Name))
+			}
+			elseif ($element.($child.Name)-is [System.Object[]])
+			{
+				Write-LogObject $child "child"
+
+				Write-Verbose "Add-Member -NotePropertyName $($child.Name) -NotePropertyValue $($child.($child.Name))"
+
+				$object | Add-Member -NotePropertyName $($child.Name) -NotePropertyValue $($child.($child.Name) -join ";")
+			}
+			elseif ($element.($child.Name) -is [System.Xml.XmlElement])
+			{
+				Write-LogObject $child "child"
+
+				$object | Add-Member -NotePropertyName $($child.Name) -NotePropertyValue $(Convert-Node $element.($child.Name))
+			}
+			else
+			{
+				Write-LogObject $child "child has an unexcepted type $($element.($child.Name).GetType())" -Level Warning
+			}
+		}
+
+    	return $object
+	}
+
+	Write-LogDebug "Start Convert-XmlToPSObject"
+
+	try
+	{
+    	$returnValue = Convert-Node $XmlElement
+		
+		# trace Success
+	    Write-LogDebug "Success Convert-XmlToPSObject"
+    }
+    catch
+    {
+        # log Error
+        Write-LogError $($_.Exception) $($_.InvocationInfo)
+    }
+
+    return $returnValue
+}
 
 <#
 .Synopsis
@@ -2873,4 +2948,4 @@ Function Write-ObjectToHtml
 	return $htmlTable
 }
 
-#end
+#endregion

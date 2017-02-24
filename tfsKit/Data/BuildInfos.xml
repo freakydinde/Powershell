@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<BuildReports version="0.29">
+<BuildReports version="0.31">
 	<Tfs>
-		<CollectionUri>https://tfs.yourprojectname/DefaultCollection</CollectionUri>
-		<ProjectName>yourProjectName</ProjectName>
+		<CollectionUri>https://tfs.axacolor.igo6.com/tfs/DefaultCollection</CollectionUri>
+		<ProjectName>COLOR-SP</ProjectName>
 	</Tfs>
-	<Build name="YourBuildName">
-		<CompilationThreshold>200</CompilationThreshold>
-		<CodeAnalysisThreshold>100</CodeAnalysisThreshold>
-		<CodeCoverageThreshold>60</CodeCoverageThreshold>
-		<Recipients>
-			<SendTo>sendEmailTo@exemple.com</SendTo>
-			<SendTo>sendEmailTo2@exemple.com</SendTo>	
-		</Recipients>
-	</Build>
 	<Mail>
 		<Server>smtp.googlemail.com</Server>
 		<Port>587</Port>
 		<UseSsl>True</UseSsl>
 	</Mail>
+	<Build name="CI-IGO6-R1.2">
+		<CompilationThreshold>200</CompilationThreshold>
+		<CodeAnalysisThreshold>100</CodeAnalysisThreshold>
+		<CodeCoverageThreshold>60</CodeCoverageThreshold>
+		<Recipients>
+			<SendTo>armand.lacore@soat.fr</SendTo>	
+		</Recipients>
+	</Build>
 	<Html>
 		<CSS>
 			body { font-family:Segoe UI; background-color:#ced5db; width:100%; font-size:11pt; text-align:center; } 
