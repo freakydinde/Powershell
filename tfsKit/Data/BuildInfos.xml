@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <BuildReports version="0.31">
 	<Tfs>
-		<CollectionUri>https://tfs.axacolor.igo6.com/tfs/DefaultCollection</CollectionUri>
-		<ProjectName>COLOR-SP</ProjectName>
+		<CollectionUri>https://tfs.soat.com/tfs/DefaultCollection</CollectionUri>
+		<ProjectName>SOAT-EXAMPLE</ProjectName>
 	</Tfs>
 	<Mail>
 		<Server>smtp.googlemail.com</Server>
@@ -14,6 +14,9 @@
 		<CodeAnalysisThreshold>100</CodeAnalysisThreshold>
 		<CodeCoverageThreshold>60</CodeCoverageThreshold>
 		<Recipients>
+			<SendTo>armand.lacore@soat.fr</SendTo>
+			<SendTo>armand.lacore@soat.fr</SendTo>	
+			<SendTo>armand.lacore@soat.fr</SendTo>	
 			<SendTo>armand.lacore@soat.fr</SendTo>	
 		</Recipients>
 	</Build>
