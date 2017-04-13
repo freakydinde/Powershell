@@ -35,7 +35,7 @@ Add-Modules @("Tfs") -Assert
 # set log level
 Set-LogLevel $LogLevel
 
-# set temp folder Root\TempYYYYMMddHHmmssyyyy
+# set temp folder Root\TempyyyyMMddHHmmssfff
 $tempFolder = Get-TempFolder
 		
 try
