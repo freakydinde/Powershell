@@ -29,7 +29,7 @@ Param ( [Parameter(Mandatory=$false,Position=0)][Validateset("English","French",
 # import Input\Output module
 if (!(Get-Module Module-IO)) { Import-Module ([IO.Path]::Combine((Split-Path $PSScriptRoot), "Modules", "Module-IO.psm1")) }
 
-# import colorkit modules
+# import tfsKit modules
 Add-Modules @("Tfs") -Assert
 
 # define verbose log level
