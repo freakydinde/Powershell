@@ -32,7 +32,7 @@ if (!(Get-Module Module-IO)) { Import-Module ([IO.Path]::Combine((Split-Path $PS
 # import tfsKit modules
 Add-Modules @("Tfs") -Assert
 
-# define verbose log level
+# set log level
 Set-LogLevel $LogLevel
 
 # set temp folder Root\TempYYYYMMddHHmmssyyyy
